@@ -152,38 +152,46 @@ def open_csv_dialog(initial_dir='.'):
     root.destroy()
     return file_path
 
+# MODIFY THIS FUNCTION FOR MAKING CHANGES TO BATCHES OF CSV FILES AS NEEDED
+def edit_csv_files():
+    pass
+
 if __name__ == "__main__":
-    # Example usage
-    base_dir = "./data/example"
-    file_name = 'example.csv'
-    file_path = os.path.join(base_dir,file_name)
-    skip_rows = 8  # Number of rows to skip before headers and/or data
-    headers = None # Define headers if they are not defined in the file
+    demo_mode = True
+    if demo_mode:
+        # Example usage
+        base_dir = "./data/example"
+        file_name = 'example.csv'
+        file_path = os.path.join(base_dir,file_name)
+        skip_rows = 8  # Number of rows to skip before headers and/or data
+        headers = None # Define headers if they are not defined in the file
 
-    # Read in points file
-    headers, data = read_csv_points(file_path, headers=headers, skip_rows=skip_rows)
+        # Read in points file
+        headers, data = read_csv_points(file_path, headers=headers, skip_rows=skip_rows)
 
-    # Create a new field combining several other fields
-    new_header = 'label'
-    data = append_concatenated_header(data,new_header,['id','type','text'])
-    headers.append(new_header)
+        # Create a new field combining several other fields
+        new_header = 'label'
+        data = append_concatenated_header(data,new_header,['id','type','text'])
+        headers.append(new_header)
 
-    # Fix a misnamed field
-    data = rename_field(data, 'x-coord', 'x')
+        # Fix a misnamed field
+        data = rename_field(data, 'x-coord', 'x')
 
-    # Extract the desired fields from the imported data
-    new_headers = ['label','x','y','z']
-    data = extract_fields(data, new_headers)
+        # Extract the desired fields from the imported data
+        new_headers = ['label','x','y','z']
+        data = extract_fields(data, new_headers)
 
-    # Update your headers based on the data object
-    headers = get_headers(data)
+        # Update your headers based on the data object
+        headers = get_headers(data)
 
-    # Show new data
-    print("\nNew Data:\n")
-    for row in data:
-        print(row)
+        # Show new data
+        print("\nNew Data:\n")
+        for row in data:
+            print(row)
 
-    # Write new data to a csv file with headers
-    file_name = 'example_out.csv'
-    file_path = os.path.join(base_dir,file_name)
-    write_csv(file_path, headers, data)
+        # Write new data to a csv file with headers
+        file_name = 'example_out.csv'
+        file_path = os.path.join(base_dir,file_name)
+        write_csv(file_path, headers, data)
+    else:
+        edit_csv_files()

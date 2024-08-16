@@ -173,6 +173,36 @@ def flip_points(data, flip_x, flip_y):
     
     return data
 
+def match_data_by_field(data1, data2, match_by, verbose=True):
+    if verbose:
+        print(f"Matching Data Objects by \'{match_by}\' field...")
+        
+    # Create a set of matching values from both data objects
+    match_values1 = {entry[match_by] for entry in data1}
+    match_values2 = {entry[match_by] for entry in data2}
+    if verbose:
+        print(f"Data 1: {len(data1)}/{len(match_values1)} entries contain \'{match_by}\' field")
+        print(f"Data 2: {len(data2)}/{len(match_values2)} entries contain \'{match_by}\' field")
+    
+    # Find the intersection of matching values
+    matching_values = match_values1.intersection(match_values2)
+    if verbose:
+        print(f"Intersection Size: {len(matching_values)}")
+        print(sorted(matching_values))
+    
+    # Filter the data1 and data2 based on the matching values
+    filtered_data1 = [entry for entry in data1 if entry[match_by] in matching_values]
+    filtered_data2 = [entry for entry in data2 if entry[match_by] in matching_values]
+    if verbose:
+        print(f"Filtered Data1:")
+        for d in filtered_data1:
+            print(d)
+        print(f"Filtered Data2:")
+        for d in filtered_data2:
+            print(d)
+    return filtered_data1, filtered_data2
+
+
 # TRANSLATION FUNCTIONS =========================================================================
 def translate_points(data, offset):
     """

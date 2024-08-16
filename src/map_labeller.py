@@ -136,10 +136,11 @@ def main(args):
         # RENAME CURRENT POINT
         if k == ord('r'):
             if len(data) <= current_index:
+                print("Nothing to rename.")
+                
+            else:
                 data[current_index]['label'] = show_popup(str(data[current_index]['label']))
                 update = True
-            else:
-                print("Nothing to rename.")
         # SAVE IMAGE
         if k == ord('s'): 
             util.save_image_dialog(draw_img,args.output_dir)

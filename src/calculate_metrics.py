@@ -9,6 +9,7 @@ from matplotlib.colors import LinearSegmentedColormap
 from matplotlib.patches import Rectangle
 from scipy.interpolate import griddata
 import point_manip as pm
+import utilities as util
 
 def log_to_csv(log_dir, log_name, data_values):
     log_path = os.path.join(log_dir, log_name)
@@ -35,43 +36,27 @@ def log_to_csv(log_dir, log_name, data_values):
         writer.writerow(data_values)
         print("LOG DATA ADDED...")
 
-def calc_coverage(truth_dict,eval_dict,verbose=True):
+def calc_coverage(data_gt,data_eval,id_field='label',verbose=True):
     '''
     RETURNS [Matching Truth Dict, Matching Eval Dict, Coverage Score]
     '''
     # Make sure parameters are dictionaries
     if verbose: print("CALCULATING COVERAGE")
-    if isinstance(truth_dict, dict):
-        truth_dict_copy = truth_dict.copy()
-    else:
-        print("ERROR: truth_dict was not of type dictionary.")
-        return -1
-    if isinstance(eval_dict, dict):
-        eval_dict_copy = eval_dict.copy()
-    else:
-        print("ERROR: eval_dict was not of type dictionary.")
-        return -1
-
-    # Make sure both dicts only contain matching entries
-    for p in truth_dict:
-        if eval_dict_copy.get(p) is None:
-            if verbose: print("Entry "+str(p)+" NOT FOUND in EVAL")
-            truth_dict_copy.pop(p)
-    for p in eval_dict:
-        if truth_dict_copy.get(p) is None:
-            if verbose: print("Entry "+str(p)+" NOT FOUND in GROUND TRUTH")
-            eval_dict_copy.pop(p)
+    ground_truth_copy = data_gt.copy()
+    eval_copy = data_eval.copy()
     
+    matched_gt, matched_eval = pm.match_data_by_field(ground_truth_copy,eval_copy,id_field,verbose=verbose)
+
     # Calculate coverage (% of truth_dict points remaining in the copy)
-    if len(truth_dict) != 0:
-        coverage = (float(len(truth_dict_copy)) / len(truth_dict)) * 100
+    if len(ground_truth_copy) != 0:
+        coverage = (float(len(matched_gt)) / len(ground_truth_copy)) * 100
     else:
-        print("Ref dict empty")
+        print("Ground truth data empty... Full coverage.")
         coverage = 100
 
     coverage = round(coverage,1)
-    if verbose: print("Coverage Found: ",coverage)
-    return truth_dict_copy, eval_dict_copy, coverage
+    if verbose: print(f"Coverage Found: {len(matched_gt)}/{len(ground_truth_copy)} -> {coverage}")
+    return matched_gt, matched_eval, coverage
 
 # NEW VERSION, NO IMAGE, RETURNS DICT OF POINT ERRORS
 def calc_error(truth_dict,eval_dict,precision=4,verbose=True):
