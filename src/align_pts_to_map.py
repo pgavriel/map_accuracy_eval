@@ -152,16 +152,7 @@ if __name__ == "__main__":
         args.img_file = img_file
 
     if args.pts_file is None:
-        # Create a simple GUI to select a file
-        root = tk.Tk()
-        root.withdraw()  # Hide the main window
-        root.geometry(f"{1920}x{1080}+{0}+{0}")
-        # Ask the user to select a file using a file dialog
-        print("No points file defined in script or arguments, please select one.")
-        initial_dir = '.'
-        pts_file = filedialog.askopenfilename(title="Select a points file", filetypes=[("CSV Files", "*.csv *.txt *.pts")], initialdir=initial_dir)
-        root.destroy()
-        args.pts_file = pts_file
+        args.pts_file = csv_loader.open_csv_dialog()
 
     # Output directory defaults to where the points file is
     if args.output_dir is None:

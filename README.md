@@ -18,9 +18,10 @@
 TODO:   
 align_pts_to_pts.py - Tool for aligning a set of reference points to ground truth points (for visualizing)  
 align_map_to_map.py - Tool for aligning two map images (for visualizing)  
-map_eval_2d.py - Script for performing 2d evaluations  
-map_eval_3d.py - Script for performing 3d evaluations  
-  
+map_eval_2d.py - Script for performing 2d reference point evaluations  
+map_eval_3d.py - Script for performing 3d reference point evaluations  
+map_eval_fiducial.py -  Script for evaluating fidicual pairs (cylinder or x shaped) in a pass/fail manner.  
+Tool for assessing the density of reference points to help spread them evenly in a map. Should be a feature of map_labeller?
 
 **ARCHIVED SCRIPTS**  
 [ARCHIVED] alignment_test.py - Testing an automatic full alignment of points. Should be contained in point_manip  

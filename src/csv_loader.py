@@ -1,5 +1,7 @@
 import csv
 import os 
+import tkinter as tk
+from tkinter import filedialog
 
 def fix_data_types(data, set_str=[],set_float=[],set_int=[]):
     print(f"Attempting to fix data types:")
@@ -102,7 +104,7 @@ def get_headers(data):
     
     return headers
 
-# Export CSV file
+# Export CSwrite_csv file
 def write_csv(file_path, headers, data):
     # Extract the directory from the file path
     directory = os.path.dirname(file_path)
@@ -120,6 +122,35 @@ def write_csv(file_path, headers, data):
 
     print(f"Finished writing {file_path}")
 
+def save_csv_dialog(data,initial_dir='.',initial_file="map_pts.csv"):
+    # Create a Tkinter root window, but don't show it
+    root = tk.Tk()
+    root.withdraw()
+
+    # Open a file save dialog
+    file_path = filedialog.asksaveasfilename(defaultextension=".csv", 
+                                             initialfile=initial_file,
+                                             filetypes=[("CSV files", "*.csv"), ("All files", "*.*")],
+                                             initialdir=initial_dir)
+    root.destroy()
+    if not file_path:
+        return  # If the user cancels the save dialog, exit the function
+
+    headers = get_headers(data)
+    # Write data to CSV
+    write_csv(file_path,headers,data)
+    return file_path
+
+def open_csv_dialog(initial_dir='.'):
+    # Create a simple GUI to select a file
+    root = tk.Tk()
+    root.withdraw()  # Hide the main window
+    # Ask the user to select a file using a file dialog
+    file_path = filedialog.askopenfilename(title="Select a points file", 
+                                          filetypes=[("CSV Files", "*.csv *.txt *.pts")], 
+                                          initialdir=initial_dir)
+    root.destroy()
+    return file_path
 
 if __name__ == "__main__":
     # Example usage

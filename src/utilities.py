@@ -2,6 +2,8 @@ import os
 import datetime
 import cv2
 from math import radians, sin, cos
+import tkinter as tk
+from tkinter import filedialog
 
 # I/O FUNCTIONS ==============================
 def generate_unique_filename(label="capture",format="%y-%m-%d-%H-%M-%S",extension=".png"):
@@ -24,6 +26,53 @@ def save_screenshot(image, save_dir='./output'):
     cv2.imwrite(save_path, image)
     print(f"Screenshot saved: {save_path}")
 
+def open_image_dialog(initial_dir='.'):
+    # Create a simple GUI to select a file
+    root = tk.Tk()
+    root.withdraw()  # Hide the main window
+    # Ask the user to select an image file using a file dialog
+    img_file = filedialog.askopenfilename(title="Select an image file", 
+                                          filetypes=[("Image files", "*.jpg *.jpeg *.png *.bmp *.gif *.tiff *.tif *.pgm *.ppm *.pnm")], 
+                                          initialdir=initial_dir)
+    root.destroy()
+    return img_file
+
+def save_image_dialog(image, initial_dir=".",initial_file=None):
+    if initial_file is None:
+        initial_file = generate_unique_filename("screenshot")
+    # Create a Tkinter root window, but don't show it
+    root = tk.Tk()
+    root.withdraw()
+
+    # Open a file save dialog
+    file_path = filedialog.asksaveasfilename(title="Save your image file", 
+                                             defaultextension=".png", 
+                                             initialfile=initial_file,
+                                             filetypes=[("Image files", "*.jpg *.jpeg *.png *.bmp *.gif *.tiff *.tif *.pgm *.ppm *.pnm")],
+                                             initialdir=initial_dir)
+    root.destroy()
+    if not file_path:
+        return  # If the user cancels the save dialog, exit the function
+
+    cv2.imwrite(file_path, image)
+    print(f"Screenshot saved: {file_path}")
+    return file_path
+
+def select_directory():
+    # Hide the root window
+    root = tk.Tk()
+    root.withdraw()
+
+    # Open a directory selection dialog
+    directory = filedialog.askdirectory(title="Select a Default Folder")
+    root.destroy()
+    # If a directory is selected, print it
+    if directory:
+        print("Selected directory:", directory)
+    else:
+        print("No directory selected.")
+
+    return directory
 
 # POINT I/O FUNCTIONS ==========================================
 def get_map_label(pts_file):

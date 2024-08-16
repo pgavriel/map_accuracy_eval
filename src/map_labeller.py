@@ -5,10 +5,13 @@ from os.path import isfile, join
 import cv2
 import tkinter as tk
 from tkinter import filedialog
+import argparse
 import utilities as util
+import csv_loader
 
 position = None
 position_changed = False
+lbl_root = None
 
 def click_event(event,x,y,flags,param):
     global position, position_changed, start_position
@@ -32,16 +35,16 @@ def center_window(win, width, height):
     win.geometry(f"{width}x{height}+{x}+{y}")
 
 def on_enter(event=None):
-    global text
+    global text,lbl_root,popup_window
     text = entry.get()
     print("Label Named:", text)
     popup_window.destroy()
-    root.destroy()
 
 def show_popup(default_text=""):
-    global popup_window,entry,root
-    root = tk.Tk()
-    root.withdraw()  # Hide the main window
+    global popup_window,entry,lbl_root
+    if lbl_root is None:
+        lbl_root = tk.Tk()
+        lbl_root.withdraw()  # Hide the main window
 
     popup_window = tk.Toplevel(takefocus=True)
     popup_window.title("Enter Reference Point Label")
@@ -51,7 +54,7 @@ def show_popup(default_text=""):
     entry.select_range(0, 'end')     # Highlight all text
     entry.focus_set()                # Set focus to the entry widget
     entry.focus_force()
-    entry.bind('<Return>', on_enter)
+    popup_window.bind('<Return>', on_enter)
 
     enter_button = tk.Button(popup_window, text="Enter", command=on_enter)
 
@@ -59,47 +62,23 @@ def show_popup(default_text=""):
     enter_button.pack(pady=10)
     center_window(popup_window,200,100)
     # while not submitted:
-    tk.mainloop()
+    lbl_root.wait_window(popup_window)
     return text
 
-def draw_ref_pt(image,pos,label=None):
-    print("Drawing Point \"{}\" at {}".format(label,pos))
-    pos[0] = int(pos[0])
-    pos[1] = int(pos[1])
-    # cv.circle(im, center, 3, (0, 25, 255), 2)
-    d = 10
-    t = 1
-    cv2.line(image,(pos[0],pos[1]-d),(pos[0],pos[1]+d),(0,0,255),t)
-    cv2.line(image,(pos[0]-d,pos[1]),(pos[0]+d,pos[1]),(0,0,255),t)
-    if label is not None:
-        font = cv2.FONT_HERSHEY_PLAIN
-        font_scale = 1
-        thickness = 1
-        lbl_offset = [2,-5]
-        org = (pos[0]+lbl_offset[0],pos[1]+lbl_offset[1])
-        image = cv2.putText(image,str(label),org,font,font_scale,(255,255,255),thickness+1,cv2.LINE_AA)
-        image = cv2.putText(image,str(label),org,font,font_scale,(0,0,0),thickness,cv2.LINE_AA)
+def main(args):
+    global position_changed, position
+    running = True
+    update = True
+
+    # Load points file if given
+    if args.pts_file is not None:
+        headers, data = csv_loader.read_csv_points(csv_path)
+        data = csv_loader.fix_data_types(data,set_str=['label'],set_float=['x','y'])
     
-    return image
-
-
-# Create a simple GUI to select an image file
-root = tk.Tk()
-root.withdraw()  # Hide the main window
-# center_window(root,1920,1080)
-root.geometry(f"{1920}x{1080}+{0}+{0}")
-# Ask the user to select an image file using a file dialog
-initial_dir = '.'
-file_path = filedialog.askopenfilename(title="Select an image file", filetypes=[("Image files", "*.jpg *.jpeg *.png *.bmp *.gif *.tiff *.tif *.pgm *.ppm *.pnm")], initialdir=initial_dir)
-file_name = os.path.basename(file_path)
-file_dir = os.path.dirname(file_path)
-running = True
-update = True
-root.destroy()
-if file_path:
     # Load the selected image using OpenCV
-    image = cv2.imread(file_path)
+    image = cv2.imread(args.img_file)
     draw_img = image.copy()
+
     #CV Window
     cv2.namedWindow("Map Image",cv2.WINDOW_AUTOSIZE)
     cv2.setMouseCallback("Map Image", click_event)
@@ -108,92 +87,132 @@ if file_path:
         print("Failed to load the image.")
         running = False
 
-    point_dict = dict()
+    data = []
     pt_label = None
-    lbl_index = 0
+    current_index = 0
     while running:
-
+        # True when map image is clicked: move or create point
         if position_changed:
             if pt_label is None:
-                pt_label = show_popup(str(len(point_dict)+1))
+                pt_label = show_popup(str(len(data)+1))
+                data.append(dict())
 
             print("Label: {}     Pos: {}".format(pt_label,position))
-            point_dict[pt_label] = position
+            data[current_index]['label'] = pt_label
+            data[current_index]['x'] = position[0]
+            data[current_index]['y'] = position[1]
             # Redraw map image
             update = True
             position_changed = False
+
+        # True when image should be redrawn
         if update:
+            # Copy original map image
             draw_img = image.copy()
-            for p in point_dict:
-                draw_img = draw_ref_pt(draw_img,point_dict[p],p)
+
+            # Draw all reference points in data
+            for p in data: 
+                util.draw_ref_pt(draw_img,[p['x'],p['y']],p['label'],color=(0,0,255))
 
             #Draw Status Text:
-            keys = list(point_dict.keys())
-            if len(keys) <= lbl_index:
+            if len(data) <= current_index:
                 current_key = None
                 current_val = None
             else:
-                current_key = keys[lbl_index]
-                current_val = point_dict[current_key]
-            status_str = "{}/{} - {}: {}".format(lbl_index+1,len(point_dict),current_key,current_val)
+                current_key = data[current_index]['label']
+                current_val = [data[current_index]['x'],data[current_index]['y']]
+            status_str = "{}/{} - {}: {}".format(current_index+1,len(data),current_key,current_val)
             util.draw_textline(draw_img,status_str,scale = 2)
             update = False
 
         # Display the image 
         cv2.imshow("Map Image",draw_img)
 
-        #Keyboard Controls
+        #Keyboard Controls ==============================================================
         k = cv2.waitKey(100) & 0xFF
+        # QUIT PROGRAM
         if k == ord('q'):
             running = False
+        # RENAME CURRENT POINT
         if k == ord('r'):
-            pt_label = show_popup(str(len(point_dict)+1))
-        if k == ord('s'): # Save image
-            f, extension = os.path.splitext(file_name)
-            filename = "pts\\"+f+"_pts.jpg"
-            cv2.imwrite(os.path.join(file_dir,filename),draw_img)
-            print("Saved {}".format(os.path.join(file_dir,filename)))
-        if k == ord('z'): # Import pts (should be in pts/[image_name].pts)
-            f, extension = os.path.splitext(file_name)
-            pts_file = "pts\\"+f+".pts"
-            pts_file = os.path.join(file_dir,pts_file)
-            point_dict = util.import_pts(pts_file)
+            if len(data) <= current_index:
+                data[current_index]['label'] = show_popup(str(data[current_index]['label']))
+                update = True
+            else:
+                print("Nothing to rename.")
+        # SAVE IMAGE
+        if k == ord('s'): 
+            util.save_image_dialog(draw_img,args.output_dir)
+        # IMPORT PTS CSV FILE
+        if k == ord('z'): 
+            csv_path = csv_loader.open_csv_dialog(args.output_dir)
+            if csv_path is not None:
+                headers, data = csv_loader.read_csv_points(csv_path)
+                data = csv_loader.fix_data_types(data,set_str=['label'],set_float=['x','y'])
             update = True
-        if k == ord('x'): # Export pts (to file_dir/pts/[image_name].pts)
-            f, extension = os.path.splitext(file_name)
-            filename = "pts\\"+f+"_pts.jpg"
-            util.export(os.path.join(file_dir,"pts"),f,point_dict)
-            cv2.imwrite(os.path.join(file_dir,filename),draw_img)
-            print("Saved {}".format(os.path.join(file_dir,filename)))
-        if k == ord('1'): # PREVIOUS REF POINT
-            lbl_index = (lbl_index-1)%(len(point_dict)+1)
-            keys = list(point_dict.keys())
-            if len(keys) <= lbl_index:
+        # EXPORT PTS CSV FILE
+        if k == ord('x'): 
+            csv_path = csv_loader.save_csv_dialog(data,args.output_dir)
+            im_file = os.path.join(os.path.dirname(csv_path),os.path.basename(csv_path)[:-4]+'.png')
+            print(f"IM FILE: {im_file}")
+            cv2.imwrite(im_file,draw_img)
+            print(f"Saved {im_file}")
+        # PREVIOUS REF POINT
+        if k == ord('1'): 
+            current_index = (current_index-1)%(len(data)+1)
+            if len(data) <= current_index:
                 pt_label = None
             else:
-                pt_label = keys[lbl_index]
+                pt_label = data[current_index]['label']
             update = True
-            print("Index:",lbl_index)
-        if k == ord('2'): # NEXT REF POINT
-            lbl_index = (lbl_index+1)%(len(point_dict)+1)
-            keys = list(point_dict.keys())
-            if len(keys) <= lbl_index:
+            print(f"Index [{current_index}] - Label: {pt_label}")
+        # NEXT REF POINT
+        if k == ord('2'): 
+            current_index = (current_index+1)%(len(data)+1)
+            if len(data) <= current_index:
                 pt_label = None
             else:
-                pt_label = keys[lbl_index]
+                pt_label = data[current_index]['label']
             update = True
-            print("Index:",lbl_index,"\tLabel:",pt_label)
-        if k == ord('3'): # REMOVE REF POINT
-            keys = list(point_dict.keys())
-            if len(keys) <= lbl_index:
+            print(f"Index [{current_index}] - Label: {pt_label}")
+        # REMOVE REF POINT
+        if k == ord('3'): 
+            if len(data) <= current_index:
                 pass
                 print("Nothing removed.")
             else:
-                point_dict.pop(keys[lbl_index], None)
+                popped = data.pop(current_index)
+                print(f"Removed Index {current_index}: {popped}")
                 update = True
 
-else:
-    print("No image file selected.")
+if __name__ == "__main__":
+    # Define default parameter values
+    img_file = None
+    # img_file = "C:/Users/nullp/Projects/map_accuracy_eval/data/example/example_gt.png"
+    
+    pts_file = None
 
-# Close the GUI
-# root.destroy()
+    output_dir = None
+    output_dir = "../data/example"
+
+    parser = argparse.ArgumentParser(description="Tool for aligning points to a map image.")
+    parser.add_argument('-i', '--img_file', dest='img_file', type=str, default=img_file,
+                        help='Directory for saving output images')
+    parser.add_argument('-p', '--pts_file', dest='pts_file', type=str, default=pts_file,
+                        help='Directory for saving output images')
+    parser.add_argument('-o', '--output_dir', dest='output_dir', type=str, default=output_dir,
+                        help='Directory for saving output images')
+    args = parser.parse_args()
+
+    # Open dialog to select map image if no path is given
+    if args.img_file is None:
+        img_file = util.open_image_dialog(args.output_dir)
+        args.img_file = img_file
+
+    # Select output directory if none is given
+    if args.output_dir is None:
+        args.output_dir = util.select_directory()
+        if args.output_dir is None:
+            args.output_dir = "."
+
+    main(args)
