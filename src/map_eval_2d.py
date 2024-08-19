@@ -7,6 +7,7 @@ if __name__ == "__main__":
     # TODO: Implement argparse, test name, output_dir, gt_file, eval_file
 
     # LOAD IN YOUR POINTS
+    log_file = "C:/Users/nullp/Projects/map_accuracy_eval/data/output_log.csv"
     pts1_file = "C:/Users/nullp/Projects/map_accuracy_eval/data/example/metric_test1.csv"
     pts2_file = "C:/Users/nullp/Projects/map_accuracy_eval/data/example/metric_test2.csv"
 
@@ -21,6 +22,24 @@ if __name__ == "__main__":
     # Do points need to be scaled? 
 
     # CALCULATE METRICS ============================================
+    verbose = True
+    write_results = True
+    test_name = "Experiment 1"
+    test_note = ""
+    metric = dict()
     # CALCULATE COVERAGE
-    data_gt, data_eval, coverage = metrics.calc_coverage(data_gt,data_eval)
-
+    data_gt, data_eval, metric['coverage'] = metrics.calc_coverage(data_gt,data_eval,verbose=verbose)
+    # CALCULATE GLOBAL ERROR METRICS
+    metric['point_errors'],metric['error_avg'],metric['error_std'] = metrics.calc_error(data_gt, data_eval,verbose=verbose)
+    # CALCULATE SCALE FACTOR METRICS
+    metric['point_scales'],metric['scale_avg'],metric['scale_std'] = metrics.calc_scale_factors(data_gt, data_eval,verbose=verbose)
+    metric['norm_scale_std'] = metric['scale_std'] / metric['scale_avg']
+    if write_results:
+        # Write metrics results to specified CSV file.
+        # TODO: Make all metrics default to None so partial tests can be logged
+        log_list = [util.timestamp(),test_name,test_note,
+                    metric['coverage'],
+                    metric['error_avg'],metric['error_std'],
+                    metric['scale_avg'],metric['scale_std'],metric['norm_scale_std']]
+        metrics.log_to_csv(log_file, log_list,verbose)
+        

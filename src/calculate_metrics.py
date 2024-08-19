@@ -11,20 +11,23 @@ from scipy.interpolate import griddata
 import point_manip as pm
 import utilities as util
 
-def log_to_csv(log_dir, log_name, data_values):
-    log_path = os.path.join(log_dir, log_name)
+def log_to_csv(log_file, data_values,verbose=False):
+    if verbose: print(f"Logging Metrics to: {log_file}")
     header = ['Timestamp', 'Map Name', 'Note',
-             'global error', 'global err std dev', 'coverage',
-             'scale mean', 'scale std dev', 'normalized scale std dev']  # Adjust the header columns as needed
+             'Coverage', 
+             'Error Average', 'Error Std Dev',
+             'Scale Average', 'Scale Std Dev', 'Normalized Scale Std Dev']  # Adjust the header columns as needed
     
     # Check if the directory exists, create it if it does not
+    log_dir = os.path.dirname(log_file)
+    log_name = os.path.basename(log_file)
     if not os.path.exists(log_dir):
         os.makedirs(log_dir)
     
-    file_exists = os.path.isfile(log_path)
+    file_exists = os.path.isfile(log_file)
     
     # Open the file in append mode
-    with open(log_path, mode='a', newline='') as csv_file:
+    with open(log_file, mode='a', newline='') as csv_file:
         writer = csv.writer(csv_file)
         
         # If the file does not exist, write the header first
@@ -34,13 +37,15 @@ def log_to_csv(log_dir, log_name, data_values):
         
         # Append the data values
         writer.writerow(data_values)
-        print("LOG DATA ADDED...")
+        if not verbose:
+            print("LOG DATA ADDED...")
+        else:
+            print(f"LOG DATA ADDED:\n{data_values}")
 
 def calc_coverage(data_gt,data_eval,id_field='label',verbose=True):
     '''
     RETURNS [Matching Truth Dict, Matching Eval Dict, Coverage Score]
     '''
-    # Make sure parameters are dictionaries
     if verbose: print("CALCULATING COVERAGE")
     ground_truth_copy = data_gt.copy()
     eval_copy = data_eval.copy()
@@ -55,65 +60,126 @@ def calc_coverage(data_gt,data_eval,id_field='label',verbose=True):
         coverage = 100
 
     coverage = round(coverage,1)
-    if verbose: print(f"Coverage Found: {len(matched_gt)}/{len(ground_truth_copy)} -> {coverage}")
+    print(" > COVERAGE METRICS")
+    print(f"Coverage Found: {len(matched_gt)}/{len(ground_truth_copy)} -> {coverage}\n")
     return matched_gt, matched_eval, coverage
 
-# NEW VERSION, NO IMAGE, RETURNS DICT OF POINT ERRORS
-def calc_error(truth_dict,eval_dict,precision=4,verbose=True):
+def calc_error(data_gt,data_eval,match_by='label',verbose=True):
     '''
-    RETURNS [POINT ERROR DICT, SCALE FACTORS DICT, GLOBAL ERROR, GLOBAL ERROR STDDEV]
+    RETURNS [POINT ERROR DICT, GLOBAL ERROR, GLOBAL ERROR STDDEV, SCALE FACTORS DICT]
     '''
     # TODO: Implement draw_debug_image parameter that returns an image to 
     #       represent the calculation
-    if verbose: print("CALCULATING ERROR")
-    dict1 = truth_dict.copy()
-    dict2 = eval_dict.copy()
+    if verbose: print("\nCALCULATING ERROR")
+    # Verify entries between datasets are matching
+    data_gt, data_eval = pm.match_data_by_field(data_gt,data_eval,match_by,verbose=False)
+    # Precompute lookup dictionaries to easily find data based on the match_by (points label) field
+    gt_lookup_dict = {entry[match_by]: entry for entry in data_gt}
+    eval_lookup_dict = {entry[match_by]: entry for entry in data_eval}
 
     point_error_list = []
     point_errors = dict()
-    dist_factors = dict()
+    # scale_factors = dict()
 
-    if verbose: print("POINT\tERROR")
     # For each reference point...
-    for p in sorted(dict1.keys()):
-        p1 = [dict1[p][0], dict1[p][1]]
-        p2 = [dict2[p][0], dict2[p][1]]
-        d1 = []
-        d2 = []
-        dist_factors[p] = dict()
+    for p in data_gt:
+        gt_lbl = p[match_by]
+        gt_p1 = [p['x'],p['y']]
+        ev_p1 = [eval_lookup_dict[gt_lbl]['x'],eval_lookup_dict[gt_lbl]['y']]
+        gt_dists = []
+        ev_dists = []
+        # scale_factors[gt_lbl] = dict()
+        if verbose: print(f" > LABEL: {gt_lbl}")
         # Get distance to each other reference point...
-        for j in sorted(dict2.keys()):
-            p3 =[dict1[j][0], dict1[j][1]]
-            p4 =[dict2[j][0], dict2[j][1]]
-            if p1 == p3: continue
-            gt_dist = pm.calculateDistance(p1[0],p1[1],p3[0],p3[1],precision)
-            eval_dist = pm.calculateDistance(p2[0],p2[1],p4[0],p4[1],precision)
-            scale_factor = gt_dist / eval_dist
-            # if verbose:
-            #     print("{}->{}: GT:{}   Eval:{}   Scale:{}".format(p,j,gt_dist,eval_dist,scale_factor))
-            dist_factors[p][j] = scale_factor
-            d1.append(gt_dist)
-            d2.append(eval_dist)
-
+        for j in data_eval:
+            ev_lbl = j[match_by]
+            if ev_lbl == gt_lbl: continue
+            gt_p2 = [gt_lookup_dict[ev_lbl]['x'],gt_lookup_dict[ev_lbl]['y']]
+            ev_p2 = [j['x'],j['y']]
+            gt_dist = pm.calculateDistance(gt_p1[0],gt_p1[1],gt_p2[0],gt_p2[1])
+            ev_dist = pm.calculateDistance(ev_p1[0],ev_p1[1],ev_p2[0],ev_p2[1])
+            # scale_factor = gt_dist / ev_dist
+            abs_diff = np.abs(gt_dist - ev_dist)
+            if verbose:
+                print(f"{gt_lbl}->{ev_lbl}: GT:{gt_dist:.2f}  EV:{ev_dist:.2f}  AbsDiff:{abs_diff:.2f}")
+            # Store calculations
+            # scale_factors[gt_lbl][ev_lbl] = scale_factor
+            gt_dists.append(gt_dist)
+            ev_dists.append(ev_dist)
         # Subtract the distances to get an error for each other reference 
-        e = np.asarray(d1) - np.asarray(d2)
+        e = np.asarray(gt_dists) - np.asarray(ev_dists)
         e = np.abs(e)
-
         # Then get an average error for that reference point
-        e = round(float(np.average(e)),precision)
-        if verbose: print("{}\t{}".format(p,e))
-        point_errors[p] = e
+        e = float(np.average(e))
+        if verbose: print(f"Average Error: {e:.2f}")
+        point_errors[gt_lbl] = e
         point_error_list.append(e)
 
-    # Average the average error for each point for a final score
-    px_error = round(np.average(np.asarray(point_error_list)),precision)
-    px_std = round(np.std(point_error_list),precision)
+        # Average the average error for each point for a final score
+    error_avg = np.average(np.asarray(point_error_list))
+    error_std = np.std(point_error_list)
+    
+    print(" > ERROR METRICS")
+    print(f"Average Global Error: {error_avg:.4f}")
+    print(f"Std Dev: {error_std:.4f}\n")
 
-    if verbose: print("Global Error(px): ",px_error)
-    if verbose: print("Std Dev(px): ",px_std,"\n")
+    return [point_errors, error_avg, error_std]
 
-    return [point_errors, dist_factors, px_error, px_std]
+def calc_scale_factors(data_gt,data_eval,match_by='label',verbose=True):
+    '''
+    RETURNS [SCALE FACTOR DICT, SCALE FACTOR AVG, SCALE FACTOR STDDEV]
+    '''
+    # TODO: Implement draw_debug_image parameter that returns an image to 
+    #       represent the calculation
+    if verbose: print("\nCALCULATING SCALE FACTORS")
+    # Verify entries between datasets are matching
+    data_gt, data_eval = pm.match_data_by_field(data_gt,data_eval,match_by,verbose=False)
+    # Precompute lookup dictionaries to easily find data based on the match_by (points label) field
+    gt_lookup_dict = {entry[match_by]: entry for entry in data_gt}
+    eval_lookup_dict = {entry[match_by]: entry for entry in data_eval}
 
+    scale_factor_list = []
+    scale_factors = dict()
+
+    # For each reference point...
+    for p in data_gt:
+        gt_lbl = p[match_by]
+        gt_p1 = [p['x'],p['y']]
+        ev_p1 = [eval_lookup_dict[gt_lbl]['x'],eval_lookup_dict[gt_lbl]['y']]
+        # gt_dists = []
+        # ev_dists = []
+        point_scales = []
+        scale_factors[gt_lbl] = dict()
+        if verbose: print(f" > LABEL: {gt_lbl}")
+        # Get distance to each other reference point...
+        for j in data_eval:
+            ev_lbl = j[match_by]
+            if ev_lbl == gt_lbl: continue
+            gt_p2 = [gt_lookup_dict[ev_lbl]['x'],gt_lookup_dict[ev_lbl]['y']]
+            ev_p2 = [j['x'],j['y']]
+            gt_dist = pm.calculateDistance(gt_p1[0],gt_p1[1],gt_p2[0],gt_p2[1])
+            ev_dist = pm.calculateDistance(ev_p1[0],ev_p1[1],ev_p2[0],ev_p2[1])
+            scale_factor = gt_dist / ev_dist
+            if verbose:
+                print(f"{gt_lbl}->{ev_lbl}: GT:{gt_dist:.2f}  EV:{ev_dist:.2f}  Scale:{scale_factor:.2f}")
+            # Store calculation
+            # scale_factors[gt_lbl][ev_lbl] = scale_factor
+            point_scales.append(scale_factor)
+        # Then get an average scale factor for that reference point
+        s = float(np.average(point_scales))
+        if verbose: print(f"Average Scale Factor: {s:.2f}")
+        scale_factors[gt_lbl] = s
+        scale_factor_list.append(s)
+
+    # Average the average scale for each point for a final score
+    scale_avg = np.average(np.asarray(scale_factor_list))
+    scale_std = np.std(scale_factor_list)
+  
+    print(" > SCALE FACTOR METRICS")
+    print(f"Average Scale Factor: {scale_avg:.4f}")
+    print(f"Std Dev: {scale_std:.4f}\n")
+
+    return [scale_factors, scale_avg, scale_std]
 
 def calc_error_3d(ref_dict,test_dict,label="Not Specified",verbose=True):
     if verbose: print("CALCULATING ERROR")

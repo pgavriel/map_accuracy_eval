@@ -6,6 +6,13 @@ import tkinter as tk
 from tkinter import filedialog
 
 # I/O FUNCTIONS ==============================
+def timestamp(format="%y-%m-%d-%H-%M-%S"):
+    # Get the current time
+    now = datetime.datetime.now()
+    # Format the time string 
+    time_str = now.strftime(format)
+    return time_str
+
 def generate_unique_filename(label="capture",format="%y-%m-%d-%H-%M-%S",extension=".png"):
     # Get the current time
     now = datetime.datetime.now()
