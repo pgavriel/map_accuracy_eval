@@ -74,13 +74,13 @@ def calc_coverage(data_gt,data_eval,match_by='label',verbose=True):
     print(f"Coverage Found: {len(matched_gt)}/{len(ground_truth_copy)} -> {coverage}\n")
     return matched_gt, matched_eval, coverage
 
-def calc_error(data_gt,data_eval,match_by='label',verbose=True):
+def calc_error(data_gt,data_eval,use_z=False,match_by='label',verbose=True):
     '''
     RETURNS [POINT ERROR DICT, GLOBAL ERROR, GLOBAL ERROR STDDEV, SCALE FACTORS DICT]
     '''
     # TODO: Implement draw_debug_image parameter that returns an image to 
     #       represent the calculation
-    if verbose: print("\nCALCULATING ERROR")
+    if verbose: print(f"\nCALCULATING ERROR {'(3D)'if use_z else ''}")
     # Verify entries between datasets are matching
     data_gt, data_eval = pm.match_data_by_field(data_gt,data_eval,match_by,verbose=False)
     # Precompute lookup dictionaries to easily find data based on the match_by (points label) field
@@ -93,8 +93,12 @@ def calc_error(data_gt,data_eval,match_by='label',verbose=True):
     # For each reference point...
     for p in data_gt:
         gt_lbl = p[match_by]
-        gt_p1 = [p['x'],p['y']]
-        ev_p1 = [eval_lookup_dict[gt_lbl]['x'],eval_lookup_dict[gt_lbl]['y']]
+        if not use_z:
+            gt_p1 = [p['x'],p['y']]
+            ev_p1 = [eval_lookup_dict[gt_lbl]['x'],eval_lookup_dict[gt_lbl]['y']]
+        else:
+            gt_p1 = [p['x'],p['y'],p['z']]
+            ev_p1 = [eval_lookup_dict[gt_lbl]['x'],eval_lookup_dict[gt_lbl]['y'],eval_lookup_dict[gt_lbl]['z']]
         gt_dists = []
         ev_dists = []
         if verbose: print(f" > LABEL: {gt_lbl}")
@@ -102,8 +106,12 @@ def calc_error(data_gt,data_eval,match_by='label',verbose=True):
         for j in data_eval:
             ev_lbl = j[match_by]
             if ev_lbl == gt_lbl: continue
-            gt_p2 = [gt_lookup_dict[ev_lbl]['x'],gt_lookup_dict[ev_lbl]['y']]
-            ev_p2 = [j['x'],j['y']]
+            if not use_z:
+                gt_p2 = [gt_lookup_dict[ev_lbl]['x'],gt_lookup_dict[ev_lbl]['y']]
+                ev_p2 = [j['x'],j['y']]
+            else:
+                gt_p2 = [gt_lookup_dict[ev_lbl]['x'],gt_lookup_dict[ev_lbl]['y'],gt_lookup_dict[ev_lbl]['z']]
+                ev_p2 = [j['x'],j['y'],j['z']]
             gt_dist = pm.calc_distance(gt_p1,gt_p2)
             ev_dist = pm.calc_distance(ev_p1,ev_p2)
             abs_diff = np.abs(gt_dist - ev_dist)
@@ -125,19 +133,19 @@ def calc_error(data_gt,data_eval,match_by='label',verbose=True):
     error_avg = np.average(np.asarray(point_error_list))
     error_std = np.std(point_error_list)
     
-    print(" > ERROR METRICS")
+    print(f" > ERROR METRICS {'(3D)'if use_z else ''}")
     print(f"Average Global Error: {error_avg:.4f}")
     print(f"Std Dev: {error_std:.4f}\n")
 
     return [point_errors, error_avg, error_std]
 
-def calc_scale_factors(data_gt,data_eval,match_by='label',verbose=True):
+def calc_scale_factors(data_gt,data_eval,use_z=False,match_by='label',verbose=True):
     '''
     RETURNS [SCALE FACTOR DICT, SCALE FACTOR AVG, SCALE FACTOR STDDEV]
     '''
     # TODO: Implement draw_debug_image parameter that returns an image to 
     #       represent the calculation
-    if verbose: print("\nCALCULATING SCALE FACTORS")
+    if verbose: print(f"\nCALCULATING SCALE FACTORS {'(3D)'if use_z else ''}")
     # Verify entries between datasets are matching
     data_gt, data_eval = pm.match_data_by_field(data_gt,data_eval,match_by,verbose=False)
     # Precompute lookup dictionaries to easily find data based on the match_by (points label) field
@@ -149,8 +157,12 @@ def calc_scale_factors(data_gt,data_eval,match_by='label',verbose=True):
     # For each reference point...
     for p in data_gt:
         gt_lbl = p[match_by]
-        gt_p1 = [p['x'],p['y']]
-        ev_p1 = [eval_lookup_dict[gt_lbl]['x'],eval_lookup_dict[gt_lbl]['y']]
+        if not use_z:
+            gt_p1 = [p['x'],p['y']]
+            ev_p1 = [eval_lookup_dict[gt_lbl]['x'],eval_lookup_dict[gt_lbl]['y']]
+        else:
+            gt_p1 = [p['x'],p['y'],p['z']]
+            ev_p1 = [eval_lookup_dict[gt_lbl]['x'],eval_lookup_dict[gt_lbl]['y'],eval_lookup_dict[gt_lbl]['z']]
         point_scales = []
         scale_factors[gt_lbl] = dict()
         if verbose: print(f" > LABEL: {gt_lbl}")
@@ -158,8 +170,12 @@ def calc_scale_factors(data_gt,data_eval,match_by='label',verbose=True):
         for j in data_eval:
             ev_lbl = j[match_by]
             if ev_lbl == gt_lbl: continue
-            gt_p2 = [gt_lookup_dict[ev_lbl]['x'],gt_lookup_dict[ev_lbl]['y']]
-            ev_p2 = [j['x'],j['y']]
+            if not use_z:
+                gt_p2 = [gt_lookup_dict[ev_lbl]['x'],gt_lookup_dict[ev_lbl]['y']]
+                ev_p2 = [j['x'],j['y']]
+            else:
+                gt_p2 = [gt_lookup_dict[ev_lbl]['x'],gt_lookup_dict[ev_lbl]['y'],gt_lookup_dict[ev_lbl]['z']]
+                ev_p2 = [j['x'],j['y'],j['z']]
             gt_dist = pm.calc_distance(gt_p1,gt_p2)
             ev_dist = pm.calc_distance(ev_p1,ev_p2)
             scale_factor = gt_dist / ev_dist
@@ -177,7 +193,7 @@ def calc_scale_factors(data_gt,data_eval,match_by='label',verbose=True):
     scale_avg = np.average(np.asarray(scale_factor_list))
     scale_std = np.std(scale_factor_list)
   
-    print(" > SCALE FACTOR METRICS")
+    print(f" > SCALE FACTOR METRICS {'(3D)'if use_z else ''}")
     print(f"Average Scale Factor: {scale_avg:.4f}")
     print(f"Std Dev: {scale_std:.4f}\n")
 

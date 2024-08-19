@@ -24,20 +24,23 @@ if __name__ == "__main__":
     # CALCULATE METRICS ============================================
     verbose = True
     write_results = True
+    eval_3d = False
     test_name = "Experiment 2"
     test_note = "New distance function"
     metric = metrics.initialize_metrics()
     # CALCULATE COVERAGE
     data_gt, data_eval, metric['coverage'] = metrics.calc_coverage(data_gt,data_eval,verbose=verbose)
     # CALCULATE GLOBAL ERROR METRICS
-    metric['point_errors'],metric['error_avg'],metric['error_std'] = metrics.calc_error(data_gt, data_eval,verbose=verbose)
+    metric['point_errors'],metric['error_avg'],metric['error_std'] = metrics.calc_error(data_gt, data_eval,use_z=eval_3d,verbose=verbose)
     # CALCULATE SCALE FACTOR METRICS
-    metric['point_scales'],metric['scale_avg'],metric['scale_std'] = metrics.calc_scale_factors(data_gt, data_eval,verbose=verbose)
+    metric['point_scales'],metric['scale_avg'],metric['scale_std'] = metrics.calc_scale_factors(data_gt, data_eval,use_z=eval_3d,verbose=verbose)
     metric['norm_scale_std'] = metric['scale_std'] / metric['scale_avg']
 
     # LOG RESULTS
     if write_results:
         # Write metrics results to specified CSV file.
+        if eval_3d:
+            test_note.append(" (3D Evaluation)")
         log_list = [util.timestamp(),test_name,test_note,
                     metric['coverage'],
                     metric['error_avg'],metric['error_std'],
