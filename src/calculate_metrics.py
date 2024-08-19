@@ -42,7 +42,17 @@ def log_to_csv(log_file, data_values,verbose=False):
         else:
             print(f"LOG DATA ADDED:\n{data_values}")
 
-def calc_coverage(data_gt,data_eval,id_field='label',verbose=True):
+def initialize_metrics(metric_list=None):
+    if metric_list is None:
+        metric_list = ['coverage',
+                       'point_errors','error_avg','error_std',
+                       'point_scales','scale_avg','scale_std','norm_scale_std']
+    metric = dict()
+    for m in metric_list:
+        metric[m] = None
+    return metric
+
+def calc_coverage(data_gt,data_eval,match_by='label',verbose=True):
     '''
     RETURNS [Matching Truth Dict, Matching Eval Dict, Coverage Score]
     '''
@@ -50,7 +60,7 @@ def calc_coverage(data_gt,data_eval,id_field='label',verbose=True):
     ground_truth_copy = data_gt.copy()
     eval_copy = data_eval.copy()
     
-    matched_gt, matched_eval = pm.match_data_by_field(ground_truth_copy,eval_copy,id_field,verbose=verbose)
+    matched_gt, matched_eval = pm.match_data_by_field(ground_truth_copy,eval_copy,match_by,verbose=verbose)
 
     # Calculate coverage (% of truth_dict points remaining in the copy)
     if len(ground_truth_copy) != 0:
@@ -79,7 +89,6 @@ def calc_error(data_gt,data_eval,match_by='label',verbose=True):
 
     point_error_list = []
     point_errors = dict()
-    # scale_factors = dict()
 
     # For each reference point...
     for p in data_gt:
@@ -88,7 +97,6 @@ def calc_error(data_gt,data_eval,match_by='label',verbose=True):
         ev_p1 = [eval_lookup_dict[gt_lbl]['x'],eval_lookup_dict[gt_lbl]['y']]
         gt_dists = []
         ev_dists = []
-        # scale_factors[gt_lbl] = dict()
         if verbose: print(f" > LABEL: {gt_lbl}")
         # Get distance to each other reference point...
         for j in data_eval:
@@ -96,14 +104,12 @@ def calc_error(data_gt,data_eval,match_by='label',verbose=True):
             if ev_lbl == gt_lbl: continue
             gt_p2 = [gt_lookup_dict[ev_lbl]['x'],gt_lookup_dict[ev_lbl]['y']]
             ev_p2 = [j['x'],j['y']]
-            gt_dist = pm.calculateDistance(gt_p1[0],gt_p1[1],gt_p2[0],gt_p2[1])
-            ev_dist = pm.calculateDistance(ev_p1[0],ev_p1[1],ev_p2[0],ev_p2[1])
-            # scale_factor = gt_dist / ev_dist
+            gt_dist = pm.calc_distance(gt_p1,gt_p2)
+            ev_dist = pm.calc_distance(ev_p1,ev_p2)
             abs_diff = np.abs(gt_dist - ev_dist)
             if verbose:
                 print(f"{gt_lbl}->{ev_lbl}: GT:{gt_dist:.2f}  EV:{ev_dist:.2f}  AbsDiff:{abs_diff:.2f}")
             # Store calculations
-            # scale_factors[gt_lbl][ev_lbl] = scale_factor
             gt_dists.append(gt_dist)
             ev_dists.append(ev_dist)
         # Subtract the distances to get an error for each other reference 
@@ -115,7 +121,7 @@ def calc_error(data_gt,data_eval,match_by='label',verbose=True):
         point_errors[gt_lbl] = e
         point_error_list.append(e)
 
-        # Average the average error for each point for a final score
+    # Average the average error for each point for a final score
     error_avg = np.average(np.asarray(point_error_list))
     error_std = np.std(point_error_list)
     
@@ -137,7 +143,6 @@ def calc_scale_factors(data_gt,data_eval,match_by='label',verbose=True):
     # Precompute lookup dictionaries to easily find data based on the match_by (points label) field
     gt_lookup_dict = {entry[match_by]: entry for entry in data_gt}
     eval_lookup_dict = {entry[match_by]: entry for entry in data_eval}
-
     scale_factor_list = []
     scale_factors = dict()
 
@@ -146,8 +151,6 @@ def calc_scale_factors(data_gt,data_eval,match_by='label',verbose=True):
         gt_lbl = p[match_by]
         gt_p1 = [p['x'],p['y']]
         ev_p1 = [eval_lookup_dict[gt_lbl]['x'],eval_lookup_dict[gt_lbl]['y']]
-        # gt_dists = []
-        # ev_dists = []
         point_scales = []
         scale_factors[gt_lbl] = dict()
         if verbose: print(f" > LABEL: {gt_lbl}")
@@ -157,13 +160,12 @@ def calc_scale_factors(data_gt,data_eval,match_by='label',verbose=True):
             if ev_lbl == gt_lbl: continue
             gt_p2 = [gt_lookup_dict[ev_lbl]['x'],gt_lookup_dict[ev_lbl]['y']]
             ev_p2 = [j['x'],j['y']]
-            gt_dist = pm.calculateDistance(gt_p1[0],gt_p1[1],gt_p2[0],gt_p2[1])
-            ev_dist = pm.calculateDistance(ev_p1[0],ev_p1[1],ev_p2[0],ev_p2[1])
+            gt_dist = pm.calc_distance(gt_p1,gt_p2)
+            ev_dist = pm.calc_distance(ev_p1,ev_p2)
             scale_factor = gt_dist / ev_dist
             if verbose:
                 print(f"{gt_lbl}->{ev_lbl}: GT:{gt_dist:.2f}  EV:{ev_dist:.2f}  Scale:{scale_factor:.2f}")
             # Store calculation
-            # scale_factors[gt_lbl][ev_lbl] = scale_factor
             point_scales.append(scale_factor)
         # Then get an average scale factor for that reference point
         s = float(np.average(point_scales))

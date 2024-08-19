@@ -24,9 +24,9 @@ if __name__ == "__main__":
     # CALCULATE METRICS ============================================
     verbose = True
     write_results = True
-    test_name = "Experiment 1"
-    test_note = ""
-    metric = dict()
+    test_name = "Experiment 2"
+    test_note = "New distance function"
+    metric = metrics.initialize_metrics()
     # CALCULATE COVERAGE
     data_gt, data_eval, metric['coverage'] = metrics.calc_coverage(data_gt,data_eval,verbose=verbose)
     # CALCULATE GLOBAL ERROR METRICS
@@ -34,9 +34,10 @@ if __name__ == "__main__":
     # CALCULATE SCALE FACTOR METRICS
     metric['point_scales'],metric['scale_avg'],metric['scale_std'] = metrics.calc_scale_factors(data_gt, data_eval,verbose=verbose)
     metric['norm_scale_std'] = metric['scale_std'] / metric['scale_avg']
+
+    # LOG RESULTS
     if write_results:
         # Write metrics results to specified CSV file.
-        # TODO: Make all metrics default to None so partial tests can be logged
         log_list = [util.timestamp(),test_name,test_note,
                     metric['coverage'],
                     metric['error_avg'],metric['error_std'],

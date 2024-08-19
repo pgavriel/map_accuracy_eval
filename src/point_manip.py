@@ -44,11 +44,22 @@ def click_event(event,x,y,flags,param):
         position_changed = True
 
 
-def calculateDistance(x1,y1,x2,y2,precision=None):
-    dist = math.sqrt((x2 - x1)**2 + (y2 - y1)**2)
-    if precision is not None:
-        dist = round(dist,precision)
-    return dist
+def calc_distance(point1, point2):
+    """
+    Calculate the Euclidean distance between two points.
+    
+    :param point1: A tuple or list representing the coordinates of the first point (x, y) or (x, y, z).
+    :param point2: A tuple or list representing the coordinates of the second point (x, y) or (x, y, z).
+    :return: The Euclidean distance between the two points.
+    """
+    if len(point1) != len(point2):
+        raise ValueError("Both points must have the same dimension.")
+    
+    # Calculate the distance using the Euclidean distance formula
+    squared_diff_sum = sum((p1 - p2) ** 2 for p1, p2 in zip(point1, point2))
+    distance = math.sqrt(squared_diff_sum)
+    
+    return distance
 
 def update_data(data, key, update_field, update_value, key_field='label'):
     """
@@ -200,7 +211,7 @@ def match_data_by_field(data1, data2, match_by, verbose=True):
     if len(data2) != len(filtered_data2):
         diff = len(data2) - len(filtered_data2)
         print(f"WARNING: {diff} entries filtered from Data 2 due to mismatch.")
-        
+
     if verbose:
         print(f"Filtered Data1:")
         for d in filtered_data1:
