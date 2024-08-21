@@ -14,9 +14,11 @@ import utilities as util
 def log_to_csv(log_file, data_values,verbose=False):
     if verbose: print(f"Logging Metrics to: {log_file}")
     header = ['Timestamp', 'Map Name', 'Note',
+             'Ground Truth File','Evaluation File',
              'Coverage', 
              'Error Average', 'Error Std Dev',
-             'Scale Average', 'Scale Std Dev', 'Normalized Scale Std Dev']  # Adjust the header columns as needed
+             'Scale Average', 'Scale Std Dev', 'Normalized Scale Std Dev',
+             'Scaled Error Average', 'Scaled Error Std Dev']  # Adjust the header columns as needed
     
     # Check if the directory exists, create it if it does not
     log_dir = os.path.dirname(log_file)
@@ -45,8 +47,10 @@ def log_to_csv(log_file, data_values,verbose=False):
 def initialize_metrics(metric_list=None):
     if metric_list is None:
         metric_list = ['coverage',
+                       'gt_file','eval_file',
                        'point_errors','error_avg','error_std',
-                       'point_scales','scale_avg','scale_std','norm_scale_std']
+                       'point_scales','scale_avg','scale_std','norm_scale_std',
+                       'scaled_point_errors','scaled_error_avg','scaled_error_std']
     metric = dict()
     for m in metric_list:
         metric[m] = None

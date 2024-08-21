@@ -358,9 +358,34 @@ def scale_points(data, scale_factor,midpoint=None,verbose=True):
             print("{} -> {}".format((point['x'],point['y']),(scaled_point['x'],scaled_point['y'])))
     return scaled_data
 
+def scale_points_wrt_origin(data, scale_factor, use_z=False):
+    """
+    Scales the 'x' and 'y' fields of the data object by the given scale factor. 
+    If use_z is True, also scales the 'z' field.
+    
+    :param data: List of dictionaries representing the data object.
+    :param scale_factor: The factor by which to scale the coordinates.
+    :param use_z: Boolean, whether to scale the 'z' field as well.
+    :return: The modified data object with scaled coordinates.
+    """
+    for entry in data:
+        if 'x' in entry and 'y' in entry:
+            entry['x'] *= scale_factor
+            entry['y'] *= scale_factor
+        else:
+            print("Warning: 'x' or 'y' field not found in one or more entries.")
+
+        if use_z and 'z' in entry:
+            entry['z'] *= scale_factor
+        elif use_z and 'z' not in entry:
+            print("Warning: 'z' field not found in one or more entries.")
+
+    return data
+
 # TODO: Need to be reimplement auto_scale function (finds the optimal scale factor, 
 #       minimizing distance between point pairs of two data objects)
 #       Reference point_matching.py for old implementation.
+
 
 
 

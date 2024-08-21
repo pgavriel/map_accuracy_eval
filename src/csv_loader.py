@@ -8,13 +8,35 @@ def fix_data_types(data, set_str=[],set_float=[],set_int=[]):
     print(f"To STRING: {set_str}")
     print(f"To FLOAT: {set_float}")
     print(f"To INT: {set_int}")
+    error_labels = set()
     for point in data:
         for label in set_str:
-            point[label] = str(point[label])
+            if label in point:
+                try:
+                    point[label] = str(point[label])
+                except:
+                    print(f"Warning: Could not convert field '{label}' to float in entry {point}.")
+            else:
+                error_labels.add(label)
         for label in set_float:
-            point[label] = float(point[label])
+            if label in point:
+                try:
+                    point[label] = float(point[label])
+                except:
+                    print(f"Warning: Could not convert field '{label}' to float in entry {point}.")
+            else:
+                error_labels.add(label)
         for label in set_int:
-            point[label] = int(point[label])
+            if label in point:
+                try:
+                    point[label] = int(point[label])
+                except:
+                    print(f"Warning: Could not convert field '{label}' to float in entry {point}.")
+            else:
+                error_labels.add(label)
+                
+    if len(error_labels) > 0:
+        print(f"Unable to convert the following fields: {error_labels}")
     
     return data
 
