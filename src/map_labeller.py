@@ -190,9 +190,7 @@ if __name__ == "__main__":
     # Define default parameter values
     img_file = None
     # img_file = "C:/Users/nullp/Projects/map_accuracy_eval/data/example/example_gt.png"
-    
     pts_file = None
-
     output_dir = None
     output_dir = "../data/example"
 
