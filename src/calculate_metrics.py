@@ -183,6 +183,7 @@ def calc_scale_factors(data_gt,data_eval,use_z=False,match_by='label',verbose=Tr
             gt_dist = pm.calc_distance(gt_p1,gt_p2)
             ev_dist = pm.calc_distance(ev_p1,ev_p2)
             scale_factor = gt_dist / ev_dist
+            scale_factors[gt_lbl][ev_lbl] = scale_factor
             if verbose:
                 print(f"{gt_lbl}->{ev_lbl}: GT:{gt_dist:.2f}  EV:{ev_dist:.2f}  Scale:{scale_factor:.2f}")
             # Store calculation
@@ -190,7 +191,7 @@ def calc_scale_factors(data_gt,data_eval,use_z=False,match_by='label',verbose=Tr
         # Then get an average scale factor for that reference point
         s = float(np.average(point_scales))
         if verbose: print(f"Average Scale Factor: {s:.2f}")
-        scale_factors[gt_lbl] = s
+        # scale_factors[gt_lbl] = s
         scale_factor_list.append(s)
 
     # Average the average scale for each point for a final score
@@ -203,69 +204,69 @@ def calc_scale_factors(data_gt,data_eval,use_z=False,match_by='label',verbose=Tr
 
     return [scale_factors, scale_avg, scale_std]
 
-def calc_error_3d(ref_dict,test_dict,label="Not Specified",verbose=True):
-    if verbose: print("CALCULATING ERROR")
-    dict1 = ref_dict.copy()
-    dict2 = test_dict.copy()
+# def calc_error_3d(ref_dict,test_dict,label="Not Specified",verbose=True):
+#     if verbose: print("CALCULATING ERROR")
+#     dict1 = ref_dict.copy()
+#     dict2 = test_dict.copy()
 
-    largest_distance = 0
-    largest_dist_string = "Unknown"
-    dlist1 = []
-    dlist2 = []
-    errors = []
-    error_avg = []
+#     largest_distance = 0
+#     largest_dist_string = "Unknown"
+#     dlist1 = []
+#     dlist2 = []
+#     errors = []
+#     error_avg = []
 
-    # For each reference point...
-    for p in sorted(dict1.keys()):
-        print("\nGetting distances wrt ",p,"...")
-        p1 = [dict1[p][0], dict1[p][1], dict1[p][2]]
-        p2 = [dict2[p][0], dict2[p][1], dict2[p][2]]
-        d1 = []
-        d2 = []
-        check_str = ""
-        print("REF ",p,": ",p1)
-        print("EVL ",p,": ",p2)
-        # Get distance to each other reference point...
-        for j in sorted(dict2.keys()):
-            p3 =[dict1[j][0], dict1[j][1], dict1[j][2]]
-            p4 =[dict2[j][0], dict2[j][1], dict2[j][2]]
-            if p1 == p3: continue
-            check_str = check_str + j + " "
-            # Compute distances
-            dist1 = np.linalg.norm(np.asarray(p1) - np.asarray(p3))
-            if dist1 > largest_distance:
-                largest_distance = dist1
-                largest_dist_string = "(" + str(p) + " to " + str(j) + ")"
-            d1.append(dist1)
-            d2.append(np.linalg.norm(np.asarray(p2) - np.asarray(p4)))
+#     # For each reference point...
+#     for p in sorted(dict1.keys()):
+#         print("\nGetting distances wrt ",p,"...")
+#         p1 = [dict1[p][0], dict1[p][1], dict1[p][2]]
+#         p2 = [dict2[p][0], dict2[p][1], dict2[p][2]]
+#         d1 = []
+#         d2 = []
+#         check_str = ""
+#         print("REF ",p,": ",p1)
+#         print("EVL ",p,": ",p2)
+#         # Get distance to each other reference point...
+#         for j in sorted(dict2.keys()):
+#             p3 =[dict1[j][0], dict1[j][1], dict1[j][2]]
+#             p4 =[dict2[j][0], dict2[j][1], dict2[j][2]]
+#             if p1 == p3: continue
+#             check_str = check_str + j + " "
+#             # Compute distances
+#             dist1 = np.linalg.norm(np.asarray(p1) - np.asarray(p3))
+#             if dist1 > largest_distance:
+#                 largest_distance = dist1
+#                 largest_dist_string = "(" + str(p) + " to " + str(j) + ")"
+#             d1.append(dist1)
+#             d2.append(np.linalg.norm(np.asarray(p2) - np.asarray(p4)))
 
-        # Subtract the distances to get an error for each other reference 
-        print("Checked in order: ", check_str)
-        #print("D1\n",d1)
-        #print("D2\n",d2)
-        e = np.asarray(d1) - np.asarray(d2)
-        e = np.around(e,decimals=2)
+#         # Subtract the distances to get an error for each other reference 
+#         print("Checked in order: ", check_str)
+#         #print("D1\n",d1)
+#         #print("D2\n",d2)
+#         e = np.asarray(d1) - np.asarray(d2)
+#         e = np.around(e,decimals=2)
         
-        e = np.abs(e)
-        print("Distance Errors: ",e)
-        # if verbose:  print(e)
-        errors.append(list(e))
-        # Then get an average error for that reference point
-        e = round(float(np.average(e)),2)
-        error_avg.append(e)
-        dlist1.append(d1)
-        dlist2.append(d2)
+#         e = np.abs(e)
+#         print("Distance Errors: ",e)
+#         # if verbose:  print(e)
+#         errors.append(list(e))
+#         # Then get an average error for that reference point
+#         e = round(float(np.average(e)),2)
+#         error_avg.append(e)
+#         dlist1.append(d1)
+#         dlist2.append(d2)
 
-    if verbose: print("\nLargest Groundtruth Distance (For Scale): ",round(largest_distance,2), largest_dist_string)
-    if verbose: print("Error Averages: ",error_avg)
-    # Average the average error for each point for a final score
-    px_error = round(np.average(np.asarray(error_avg)),2)
-    px_std = round(np.std(error_avg),2)
+#     if verbose: print("\nLargest Groundtruth Distance (For Scale): ",round(largest_distance,2), largest_dist_string)
+#     if verbose: print("Error Averages: ",error_avg)
+#     # Average the average error for each point for a final score
+#     px_error = round(np.average(np.asarray(error_avg)),2)
+#     px_std = round(np.std(error_avg),2)
 
-    if verbose: print("Error Metric: ",px_error)
-    if verbose: print("Std dev: ",px_std,"\n")
+#     if verbose: print("Error Metric: ",px_error)
+#     if verbose: print("Std dev: ",px_std,"\n")
 
-    return px_error, px_std
+#     return px_error, px_std
 
 def auto_fullprocess(ref_dict,test_dict,test_img,v=True,visualize=True):
     # original_ref_dict = ref_dict.copy()
@@ -315,18 +316,18 @@ def auto_fullprocess(ref_dict,test_dict,test_img,v=True,visualize=True):
     # Return tranformed image and marker dict
     return rotated_img, rot_dict
 
-def generate_pointerror_contour_plot(truth_dict,eval_dict,metrics,image=None,save_file=None,title="Point Error Contour",units="px",note=""):
-    scores_dict = metrics[0]
+def generate_pointerror_contour_plot(data,point_errors,metrics,image=None,save_file=None,title="Point Error Contour",units="px",note=""):
+    # scores_dict = point_errors
     flip_x = False
     flip_y = True
     draw_labels = True
     sparse_x = []
     sparse_y = []
     sparse_error = []
-    for k in eval_dict:
-        sparse_x.append(eval_dict[k][0])
-        sparse_y.append(eval_dict[k][1])
-        sparse_error.append(scores_dict[k])
+    for p in data:
+        sparse_x.append(p['x'])
+        sparse_y.append(p['y'])
+        sparse_error.append(point_errors[p['label']])
 
     vmin = min(sparse_error)
     vmax = max(sparse_error)
@@ -379,13 +380,14 @@ def generate_pointerror_contour_plot(truth_dict,eval_dict,metrics,image=None,sav
 
     # for x, y, label in zip(sparse_x, sparse_y, sparse_error):
     if draw_labels:
-        for k in eval_dict:
-            ax1.text(eval_dict[k][0], eval_dict[k][1], k, color='black', fontsize=8, ha='left', va='top')
+        for p in data:
+            ax1.text(p['x'], p['y'], p['label'], color='black', fontsize=8, ha='left', va='top')
 
     
-    label_str = "Coverage: {}%\nGlobal Error: {}{}\nStd. Dev: {}{}\n{}".format(
-        metrics[4],metrics[2],units,metrics[3],units,note
-    )
+    # label_str = "Coverage: {}%\nGlobal Error: {}{}\nStd. Dev: {}{}\n{}".format(
+    #     metrics[4],metrics[2],units,metrics[3],units,note
+    # )
+    label_str = "Metrics will go here"
     # Add text or annotations to the second subplot (ax2)
     ax2.text(0.01, 0.01, label_str, fontsize=12, color='black')
     # Remove axis labels and ticks for the second subplot
@@ -402,13 +404,16 @@ def generate_pointerror_contour_plot(truth_dict,eval_dict,metrics,image=None,sav
     else:
         plt.show()
         
-def generate_scalefactor_plot(truth_dict,eval_dict,metrics,excludestd=0,image=None,save_file=None,title="Scale Factor Plot",units="px",note=""):
-    n = len(metrics[0])
+def generate_scalefactor_plot(data,metrics,excludestd=0,image=None,save_file=None,title="Scale Factor Plot",units="px",note=""):
+    n = len(metrics['point_scales'])
     print(f"Using histogram with 5N ({n*5}) bins. (N={n})")
-    precision = 7
+    # precision = 7
     flip_x = False
     flip_y = True
     draw_labels = True
+
+    # Create a lookup dictionary by the label field.
+    data_lookup = {entry['label']: entry for entry in data}
 
     # Coordinates for all point pairs and their corresponding scale value
     x1 = []
@@ -416,29 +421,29 @@ def generate_scalefactor_plot(truth_dict,eval_dict,metrics,excludestd=0,image=No
     x2 = []
     y2 = []
     scale = []
-    dist_dict = metrics[1]
-    for p in dist_dict:
-        for k in dist_dict[p]:
-            x1.append(eval_dict[p][0])
-            y1.append(eval_dict[p][1])
-            x2.append(eval_dict[k][0])
-            y2.append(eval_dict[k][1])
-            scale.append(dist_dict[p][k])
+    # dist_dict = metrics[1]
+    for p in metrics['point_scales']:
+        for k in metrics['point_scales'][p]:
+            x1.append(data_lookup[p]['x'])
+            y1.append(data_lookup[p]['y'])
+            x2.append(data_lookup[k]['x'])
+            y2.append(data_lookup[k]['y'])
+            scale.append(metrics['point_scales'][p][k])
 
     # Coordinates used for scatter plot
     sparse_x = []
     sparse_y = []
-    for k in eval_dict:
-        sparse_x.append(eval_dict[k][0])
-        sparse_y.append(eval_dict[k][1])
+    for k in data:
+        sparse_x.append(k['x'])
+        sparse_y.append(k['y'])
 
 
     # Calculate stats on scale values
     vmin = min(scale)
     vmax = max(scale)
     print("Scale min:{}  max:{}".format(vmin,vmax))
-    scale_avg = round(np.average(np.asarray(scale)),precision)
-    scale_stddev = round(np.std(scale),precision)
+    scale_avg = metrics['scale_avg']
+    scale_stddev = metrics['scale_std']
     print("Avg:{}  StdDev:{}".format(scale_avg,scale_stddev))
     # Set vmin and vmax for the colorscale
     if scale_stddev < 0.0000001:
@@ -534,13 +539,14 @@ def generate_scalefactor_plot(truth_dict,eval_dict,metrics,excludestd=0,image=No
 
     # for x, y, label in zip(sparse_x, sparse_y, sparse_error):
     if draw_labels:
-        for k in eval_dict:
-            ax1.text(eval_dict[k][0], eval_dict[k][1], k, color='black', fontsize=8, ha='left', va='top')
+        for k in data:
+            ax1.text(k['x'], k['y'], k['label'], color='black', fontsize=8, ha='left', va='top')
 
     # Add text or annotations to the second subplot (ax2)
     # label_str = "Coverage: {}%\nGlobal Error: {}{}\nStd. Dev: {}{}\n{}".format(
     #     metrics[4],metrics[2],units,metrics[3],units,note
     # )
+    
     # ax2.text(0.01, 0.01, label_str, fontsize=12, color='black')
     # Remove axis labels and ticks for the second subplot
     # ax2.axis('off')

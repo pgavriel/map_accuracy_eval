@@ -61,6 +61,33 @@ def calc_distance(point1, point2):
     
     return distance
 
+def calc_angle(point1, point2):
+    """
+    Calculate the angle in degrees of the line between two points.
+    A horizontal line is considered 0 degrees.
+    
+    Args:
+    - point1 (tuple): The (x, y) coordinates of the first point.
+    - point2 (tuple): The (x, y) coordinates of the second point.
+    
+    Returns:
+    - float: The angle in degrees.
+    """
+    x1, y1 = point1
+    x2, y2 = point2
+    
+    # Calculate the difference in coordinates
+    delta_x = x2 - x1
+    delta_y = y2 - y1
+    
+    # Calculate the angle using atan2, which takes into account the quadrant
+    angle_radians = math.atan2(delta_y, delta_x)
+    
+    # Convert radians to degrees
+    angle_degrees = math.degrees(angle_radians)
+    
+    return angle_degrees
+
 def update_data(data, key, update_field, update_value, key_field='label'):
     """
     For any data entry with 'key' in it's 'key_field',

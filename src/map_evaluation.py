@@ -1,4 +1,5 @@
 import os
+import cv2 as cv
 import point_manip as pm
 import csv_loader
 import utilities as util
@@ -8,22 +9,35 @@ if __name__ == "__main__":
     # TODO: Implement argparse, test name, output_dir, gt_file, eval_file
     verbose = True
     write_results = True
-    eval_3d = True
+    eval_3d = False
     auto_scale = True
-    test_name = "Experiment 1"
-    test_note = "3D Test - Translate, Rotate, Real Error (pts2 + pts4)"
+
+    create_plots = True
+    create_err_plot = True
+    create_scale_plot = True
+    error_to_use = 'point_errors' # or 'scaled_point_errors'
+    err_plot_name = util.generate_unique_filename(f"point-errors")
+    exclude_std_devs = 5
+    scale_plot_name = util.generate_unique_filename(f"scale-factors")
+
+    test_name = "Experiment 2"
+    test_note = "Plotting Test"
 
     # LOAD IN YOUR POINTS
-    log_file = "C:/Users/nullp/Projects/map_accuracy_eval/data/output_log.csv"
-    pts1_file = "C:/Users/nullp/Projects/map_accuracy_eval/data/example/metric_test1.csv"
-    pts1_file = csv_loader.open_csv_dialog('../data')
+    output_dir = "C:/Users/nullp/Projects/map_accuracy_eval/data/dev-testing"
+    log_name = "output_log.csv"
+    log_file = os.path.join(output_dir,log_name)
+    pts1_file = "C:/Users/nullp/Projects/map_accuracy_eval/data/example/metric_test3.csv"
+    # pts1_file = csv_loader.open_csv_dialog('../data')
     
-    pts2_file = "C:/Users/nullp/Projects/map_accuracy_eval/data/example/metric_test2.csv"
-    pts2_file = csv_loader.open_csv_dialog('../data')
+    pts2_file = "C:/Users/nullp/Projects/map_accuracy_eval/data/example/metric_test5.csv"
+    # pts2_file = pts1_file
     
 
     # use_headers = None    # Set to None if first line of csv has headers
-    use_headers = ['label','x','y','z']
+    # use_headers = ['label','x','y']
+    # if eval_3d: use_headers.append('z')
+    use_headers = None
     headers1, data_gt = csv_loader.read_csv_points(pts1_file,use_headers,verbose=verbose)
     gt_file = os.path.basename(pts1_file)
     data_gt = csv_loader.fix_data_types(data_gt,set_str=['label'],set_float=['x','y','z'])
@@ -33,11 +47,19 @@ if __name__ == "__main__":
 
     # LOAD MAP IMAGES
     # TODO: Add option to include map image(s) that line up with the points, set the blend, used to make figures later
+    map_image = None
+    # map_image_file = util.open_image_dialog()
+    map_image_file = "C:/Users/nullp/Projects/map_accuracy_eval/data/example/example_gt.png"
+    if map_image_file:
+        map_image = cv.imread(map_image_file)
+
 
     # Do points need to be scaled? 
 
     # CALCULATE METRICS ============================================
     metric = metrics.initialize_metrics()
+    metric['test_name'] = test_name
+    metric['test_note'] = test_note
     metric['gt_file'] = gt_file
     metric['eval_file'] = eval_file
     # CALCULATE COVERAGE
@@ -54,6 +76,13 @@ if __name__ == "__main__":
         data_eval = pm.scale_points_wrt_origin(data_eval,metric['scale_avg'],eval_3d)
         # CALCULATE GLOBAL ERROR METRICS
         metric['scaled_point_errors'],metric['scaled_error_avg'],metric['scaled_error_std'] = metrics.calc_error(data_gt, data_eval,use_z=eval_3d,verbose=verbose)
+    
+    # GENERATE OUTPUT PLOTS
+    if create_plots:
+        if create_err_plot:
+            metrics.generate_pointerror_contour_plot(data_eval,metric[error_to_use],metric,map_image,err_plot_name)
+        if create_scale_plot:
+            metrics.generate_scalefactor_plot(data_eval,metric,exclude_std_devs,map_image,scale_plot_name)
     
     # LOG RESULTS
     if write_results:

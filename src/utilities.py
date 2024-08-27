@@ -101,45 +101,45 @@ def get_map_label(pts_file):
     
     return label
 
-def import_pts(pts_file):
-    print("Importing "+str(pts_file)+" ...")
-    try:
-        point_dict = dict()
-        f = open(pts_file,"r")
-        lines = f.readlines()
-        lines = lines[1:]
-        for line in lines:
-            data = line.split(',')
-            # print(data)
-            if data[0].isnumeric():
-                marker = int(data[0])
-            else:
-                marker = data[0]
-            x = float(data[1])
-            y = float(data[2][:-1])
-            coords = [x,y]
-            point_dict[marker] = coords
-        print("Imported point dict:")
-        print(point_dict)
-        return point_dict
-    except:
-        print("PTS IMPORT FAILED")
-        return None
+# def import_pts(pts_file):
+#     print("Importing "+str(pts_file)+" ...")
+#     try:
+#         point_dict = dict()
+#         f = open(pts_file,"r")
+#         lines = f.readlines()
+#         lines = lines[1:]
+#         for line in lines:
+#             data = line.split(',')
+#             # print(data)
+#             if data[0].isnumeric():
+#                 marker = int(data[0])
+#             else:
+#                 marker = data[0]
+#             x = float(data[1])
+#             y = float(data[2][:-1])
+#             coords = [x,y]
+#             point_dict[marker] = coords
+#         print("Imported point dict:")
+#         print(point_dict)
+#         return point_dict
+#     except:
+#         print("PTS IMPORT FAILED")
+#         return None
     
-def export(dir,filename,ref_dict):
-    try:
-        if not os.path.exists(dir):
-            os.makedirs(dir)
-        pts_file = filename+".pts"
-        f = open(os.path.join(dir,pts_file),"w+")
-        f.write(filename+"\n")
-        for p in sorted(ref_dict.keys()):
-            write_str = str(p)+","+str(ref_dict[p][0])+","+str(ref_dict[p][1])+"\n"
-            f.write(write_str)
-        f.close()
-        print("POINT DICT EXPORTED TO " + filename)
-    except:
-        print("Unable to export points")
+# def export(dir,filename,ref_dict):
+#     try:
+#         if not os.path.exists(dir):
+#             os.makedirs(dir)
+#         pts_file = filename+".pts"
+#         f = open(os.path.join(dir,pts_file),"w+")
+#         f.write(filename+"\n")
+#         for p in sorted(ref_dict.keys()):
+#             write_str = str(p)+","+str(ref_dict[p][0])+","+str(ref_dict[p][1])+"\n"
+#             f.write(write_str)
+#         f.close()
+#         print("POINT DICT EXPORTED TO " + filename)
+#     except:
+#         print("Unable to export points")
 
 
 # DRAWING FUNCTIONS ============================================================================
@@ -191,3 +191,4 @@ def compose(image1, image2, blend=50):
     beta = 1.0 - alpha
 
     blended = cv2.addWeighted(image1, alpha, image2, beta, 0.0)
+    return blended
