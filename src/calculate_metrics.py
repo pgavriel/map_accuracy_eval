@@ -3,6 +3,7 @@ import csv
 import numpy as np
 import cv2 as cv
 import matplotlib.pyplot as plt
+import matplotlib.patheffects as path_effects
 import matplotlib as mpl
 from matplotlib.gridspec import GridSpec
 from matplotlib.colors import LinearSegmentedColormap
@@ -184,6 +185,7 @@ def calc_scale_factors(data_gt,data_eval,use_z=False,match_by='label',verbose=Tr
             ev_dist = pm.calc_distance(ev_p1,ev_p2)
             scale_factor = gt_dist / ev_dist
             scale_factors[gt_lbl][ev_lbl] = scale_factor
+            scale_factor_list.append(scale_factor)
             if verbose:
                 print(f"{gt_lbl}->{ev_lbl}: GT:{gt_dist:.2f}  EV:{ev_dist:.2f}  Scale:{scale_factor:.2f}")
             # Store calculation
@@ -192,7 +194,7 @@ def calc_scale_factors(data_gt,data_eval,use_z=False,match_by='label',verbose=Tr
         s = float(np.average(point_scales))
         if verbose: print(f"Average Scale Factor: {s:.2f}")
         # scale_factors[gt_lbl] = s
-        scale_factor_list.append(s)
+        # scale_factor_list.append(s)
 
     # Average the average scale for each point for a final score
     scale_avg = np.average(np.asarray(scale_factor_list))
@@ -204,120 +206,8 @@ def calc_scale_factors(data_gt,data_eval,use_z=False,match_by='label',verbose=Tr
 
     return [scale_factors, scale_avg, scale_std]
 
-# def calc_error_3d(ref_dict,test_dict,label="Not Specified",verbose=True):
-#     if verbose: print("CALCULATING ERROR")
-#     dict1 = ref_dict.copy()
-#     dict2 = test_dict.copy()
 
-#     largest_distance = 0
-#     largest_dist_string = "Unknown"
-#     dlist1 = []
-#     dlist2 = []
-#     errors = []
-#     error_avg = []
-
-#     # For each reference point...
-#     for p in sorted(dict1.keys()):
-#         print("\nGetting distances wrt ",p,"...")
-#         p1 = [dict1[p][0], dict1[p][1], dict1[p][2]]
-#         p2 = [dict2[p][0], dict2[p][1], dict2[p][2]]
-#         d1 = []
-#         d2 = []
-#         check_str = ""
-#         print("REF ",p,": ",p1)
-#         print("EVL ",p,": ",p2)
-#         # Get distance to each other reference point...
-#         for j in sorted(dict2.keys()):
-#             p3 =[dict1[j][0], dict1[j][1], dict1[j][2]]
-#             p4 =[dict2[j][0], dict2[j][1], dict2[j][2]]
-#             if p1 == p3: continue
-#             check_str = check_str + j + " "
-#             # Compute distances
-#             dist1 = np.linalg.norm(np.asarray(p1) - np.asarray(p3))
-#             if dist1 > largest_distance:
-#                 largest_distance = dist1
-#                 largest_dist_string = "(" + str(p) + " to " + str(j) + ")"
-#             d1.append(dist1)
-#             d2.append(np.linalg.norm(np.asarray(p2) - np.asarray(p4)))
-
-#         # Subtract the distances to get an error for each other reference 
-#         print("Checked in order: ", check_str)
-#         #print("D1\n",d1)
-#         #print("D2\n",d2)
-#         e = np.asarray(d1) - np.asarray(d2)
-#         e = np.around(e,decimals=2)
-        
-#         e = np.abs(e)
-#         print("Distance Errors: ",e)
-#         # if verbose:  print(e)
-#         errors.append(list(e))
-#         # Then get an average error for that reference point
-#         e = round(float(np.average(e)),2)
-#         error_avg.append(e)
-#         dlist1.append(d1)
-#         dlist2.append(d2)
-
-#     if verbose: print("\nLargest Groundtruth Distance (For Scale): ",round(largest_distance,2), largest_dist_string)
-#     if verbose: print("Error Averages: ",error_avg)
-#     # Average the average error for each point for a final score
-#     px_error = round(np.average(np.asarray(error_avg)),2)
-#     px_std = round(np.std(error_avg),2)
-
-#     if verbose: print("Error Metric: ",px_error)
-#     if verbose: print("Std dev: ",px_std,"\n")
-
-#     return px_error, px_std
-
-def auto_fullprocess(ref_dict,test_dict,test_img,v=True,visualize=True):
-    # original_ref_dict = ref_dict.copy()
-    # original_test_dict = test_dict.copy()
-    processed_img = test_img.copy()
-    draw_img = test_img.copy()
-    draw_img.fill(255)
-    print(v)
-    #1. Remove entries that aren't present in both dicts, calculate coverage
-    ref_dict, test_dict, coverage = calc_coverage(ref_dict, test_dict, verbose=v)
-    
-    #2. Get the midpoints for each dict and align test set to the reference
-    aligned_dict, xy_off = auto_align(ref_dict, test_dict, draw_img)
-    if visualize:
-        cv.imshow("Map Comparison",draw_img)
-        cv.waitKey(0)
-
-    #3. Find the proper scale to minimize error metric
-
-    scaled_dict, min_scale, scale_img = auto_scale(ref_dict,aligned_dict,draw_img, verbose=v)
-    if visualize:
-        cv.imshow("Map Comparison",scale_img)
-        cv.waitKey(0)
-    
-    #4. Find proper rotation by minimizing the sum of distances between corresponding markers
-    rot_dict, min_rot, rot_img = auto_rotate(ref_dict, scaled_dict, scale_img, verbose=v)
-    if visualize:
-        cv.imshow("Map Comparison", rot_img)
-        cv.waitKey(0)
-
-    # test_img = trans_image.image.copy()
-    if v:
-        print("FINAL TRANSFORM RESULTS")
-        print("Coverage:{}  XY_Offset:{}  Scale:{}  Rotation:{}".format(coverage,xy_off,min_scale,min_rot))
-    
-    #5. Get transform matrix, apply it to test image
-    marker_mp = get_dict_midpoint(test_dict)
-    rot_mat = cv.getRotationMatrix2D(marker_mp, -min_rot, min_scale)
-    rot_mat[0][2] = rot_mat[0][2] - xy_off[0]
-    rot_mat[1][2] = rot_mat[1][2] - xy_off[1]
-    rotated_img = cv.warpAffine(processed_img, rot_mat, processed_img.shape[1::-1], flags=cv.INTER_LINEAR,borderValue=(255,255,255))
-    
-    # if visualize:
-    #     cv.imshow("Map Comparison", rotated_img)
-    #     cv.waitKey()
-
-    # Return tranformed image and marker dict
-    return rotated_img, rot_dict
-
-def generate_pointerror_contour_plot(data,point_errors,metrics,image=None,save_file=None,title="Point Error Contour",units="px",note=""):
-    # scores_dict = point_errors
+def generate_pointerror_contour_plot(data,point_errors,metrics,image=None,save_file=None,show_plot=True):
     flip_x = False
     flip_y = True
     draw_labels = True
@@ -329,6 +219,7 @@ def generate_pointerror_contour_plot(data,point_errors,metrics,image=None,save_f
         sparse_y.append(p['y'])
         sparse_error.append(point_errors[p['label']])
 
+    # Min and Max error values for color scaling
     vmin = min(sparse_error)
     vmax = max(sparse_error)
     # vmin = 0 
@@ -344,21 +235,28 @@ def generate_pointerror_contour_plot(data,point_errors,metrics,image=None,save_f
     # Interpolate sparse data onto the regular grid
     Z = griddata((sparse_x, sparse_y), sparse_error, (X, Y), method='linear')
 
-    # Create a contour plot
-    # Create a figure with a subplot grid (2 rows, 1 column)
-    # fig, (ax1, ax2) = plt.subplots(2, 1, figsize=(10, 5))
+    # Create the figure layout
     fig = plt.figure(figsize=(8, 8))
     gs = GridSpec(2, 1, height_ratios=[4, 1])
     ax1 = plt.subplot(gs[0])
     ax2 = plt.subplot(gs[1])
-    # plt.figure(figsize=(16, 9))
+
+    # Draw background map image
     if image is not None:
         print("Adding image to contour plot")
         ax1.imshow(image,zorder=1)
 
-    contour = ax1.contourf(X, Y, Z, levels=20, cmap='RdYlGn_r',alpha=0.7,linewidths=0,vmin=vmin, vmax=vmax)
+    # Draw Contour Plot
+    contour = ax1.contourf(X, Y, Z, levels=20, cmap='RdYlGn_r',alpha=0.7,vmin=vmin, vmax=vmax)
+    colorbar = plt.colorbar(contour,label="Global Error") 
+
     # Draw Scatter Points
-    ax1.scatter(sparse_x, sparse_y, c='black', cmap='rainbow_r', alpha=0.5, s=4)
+    ax1.scatter(sparse_x, sparse_y, c='black', alpha=0.5, s=4)
+
+    # Draw Reference Point Labels
+    if draw_labels:
+        for p in data:
+            ax1.text(p['x'], p['y'], p['label'], color='black', fontsize=8, ha='left', va='top')
 
     # Set Axis
     if flip_x:
@@ -374,40 +272,42 @@ def generate_pointerror_contour_plot(data,point_errors,metrics,image=None,save_f
         y_min = min(y)
         y_max = max(y)
     ax1.axis([x_min, x_max, y_min, y_max])
-    ax2.axis([0, 1, 0, 1])
-    colorbar = plt.colorbar(contour,label="Global Error ({})".format(units))
-    # colorbar.set_clim(0, max(sparse_error))   
+    ax2.axis([0, 1, 1, 0])
 
-    # for x, y, label in zip(sparse_x, sparse_y, sparse_error):
-    if draw_labels:
-        for p in data:
-            ax1.text(p['x'], p['y'], p['label'], color='black', fontsize=8, ha='left', va='top')
-
-    
-    # label_str = "Coverage: {}%\nGlobal Error: {}{}\nStd. Dev: {}{}\n{}".format(
-    #     metrics[4],metrics[2],units,metrics[3],units,note
-    # )
-    label_str = "Metrics will go here"
+    # Create lower subplot (metrics label)
+    label_str = f"[TITLE] {metrics['test_name']} - {metrics['test_note']}\n" \
+                + f"[GROUND TRUTH FILE] {metrics['gt_file']}\n" \
+                + f"[EVALUATION FILE] {metrics['eval_file']}\n\n" \
+                + f"[METRICS]\nCoverage: {metrics['coverage']}\n" \
+                + f"Error Avg: {metrics['error_avg']:.2f} ({metrics['error_std']:.2f} std dev)\n" \
+                + f"Scale Avg: {metrics['scale_avg']:.2f} ({metrics['scale_std']:.2f} std dev)"  
     # Add text or annotations to the second subplot (ax2)
-    ax2.text(0.01, 0.01, label_str, fontsize=12, color='black')
-    # Remove axis labels and ticks for the second subplot
-    ax2.axis('off')
-    # Adjust the layout spacing
-    # plt.tight_layout()
+    ax2.text(0.01, 0.04, label_str, verticalalignment='top', fontsize=10, color='black')
+    # Set the edge color and line width for the subplot's border (black border)
+    for spine in ax2.spines.values():
+        spine.set_color('black')
+        spine.set_linewidth(2)
+    # Hide the tick marks
+    ax2.tick_params(axis='both', length=0)
+    # Hide the tick labels
+    ax2.set_xticklabels([])
+    ax2.set_yticklabels([])
 
-    ax1.set_title(title)
+    # Adjust the layout spacing
+    plt.tight_layout()
+
+    # SAVE / SHOW PLOT ===== ===== ===== ===== ===== ===== ===== ===== ===== ===== 
+    ax1.set_title(metrics['test_name'] + " (Point Errors)")
     if save_file is not None:
-        # plt.show()
-        plt.savefig(save_file)
+        plt.savefig(save_file,dpi=300)
         print("Saved: {}".format(save_file))
-        plt.close()
-    else:
+        # plt.close()
+    if show_plot:
         plt.show()
         
-def generate_scalefactor_plot(data,metrics,excludestd=0,image=None,save_file=None,title="Scale Factor Plot",units="px",note=""):
+def generate_scalefactor_plot(data,metrics,excludestd=0,image=None,save_file=None,show_plot=True):
     n = len(metrics['point_scales'])
     print(f"Using histogram with 5N ({n*5}) bins. (N={n})")
-    # precision = 7
     flip_x = False
     flip_y = True
     draw_labels = True
@@ -421,7 +321,6 @@ def generate_scalefactor_plot(data,metrics,excludestd=0,image=None,save_file=Non
     x2 = []
     y2 = []
     scale = []
-    # dist_dict = metrics[1]
     for p in metrics['point_scales']:
         for k in metrics['point_scales'][p]:
             x1.append(data_lookup[p]['x'])
@@ -436,7 +335,6 @@ def generate_scalefactor_plot(data,metrics,excludestd=0,image=None,save_file=Non
     for k in data:
         sparse_x.append(k['x'])
         sparse_y.append(k['y'])
-
 
     # Calculate stats on scale values
     vmin = min(scale)
@@ -458,19 +356,18 @@ def generate_scalefactor_plot(data,metrics,excludestd=0,image=None,save_file=Non
     # Create a regular grid for interpolation
     grid_resolution = 250
     pad = abs((max(sparse_x)-min(sparse_x))*0.05)
-    print("AX1 Padding: ",pad)
     x = np.linspace(min(sparse_x)-pad, max(sparse_x)+pad, grid_resolution)
     y = np.linspace(min(sparse_y)-pad, max(sparse_y)+pad, grid_resolution)
 
-    # Create a figure with a subplot grid (2 rows, 1 column)
-    fig = plt.figure(figsize=(6, 6))
+    # Create a figure with a subplot grid
+    fig = plt.figure(figsize=(8, 8))
     gs = GridSpec(2, 1, height_ratios=[3, 1])
     ax1 = plt.subplot(gs[0])
     ax2 = plt.subplot(gs[1])
 
     # Add background image to figure
     if image is not None:
-        print("Adding image to contour plot")
+        print("Adding image to plot")
         ax1.imshow(image,zorder=1)
 
     # Create custom color map
@@ -485,37 +382,23 @@ def generate_scalefactor_plot(data,metrics,excludestd=0,image=None,save_file=Non
         t = i / (n_segments - 1)
         colors.append(cmap2(t))
     custom_cmap = LinearSegmentedColormap.from_list('custom_RdYlGn_RdYlGn_r', colors, N=n_segments*2)
-
-    # colormap = mpl.colormaps['RdYlGn']
     norm = mpl.colors.Normalize(vmin=vmin, vmax=vmax)
     sm = plt.cm.ScalarMappable(cmap=custom_cmap, norm=norm)
     sm.set_array([])
     
+    # Draw connections that are not excluded with the appropriate color
     for i in range(len(x1)):
         if scale[i] <= scale_avg-(scale_stddev*excludestd) or scale[i] >= scale_avg+(scale_stddev*excludestd):
             color = sm.to_rgba(scale[i])  # Map the value to a color
             ax1.plot([x1[i], x2[i]], [y1[i], y2[i]], color=color, alpha=0.5)
 
-    # Plot Scale Factor Data
-    hist, bins, _ = ax2.hist(scale, bins=5*n, edgecolor='black', alpha=1.0)
-    max_value = max(hist)
-    # Draw Exclusion Zone
-    ax2.plot([scale_avg+(scale_stddev*excludestd),scale_avg+(scale_stddev*excludestd)],[0,max_value],color='black')
-    ax2.plot([scale_avg-(scale_stddev*excludestd),scale_avg-(scale_stddev*excludestd)],[0,max_value],color='black')
-    ax2.add_patch(Rectangle((scale_avg-(scale_stddev*excludestd),0),(scale_stddev*excludestd*2),max_value,facecolor = 'black',fill=True,alpha=0.3))
-    # Draw Mean and Std Dev markers
-    ax2.plot([scale_avg,scale_avg],[0,max_value],color='green')
-    ax2.plot([scale_avg+scale_stddev,scale_avg+scale_stddev],[0,max_value],color='yellow')
-    ax2.plot([scale_avg-scale_stddev,scale_avg-scale_stddev],[0,max_value],color='yellow')
-    ax2.plot([scale_avg+(scale_stddev*2),scale_avg+(scale_stddev*2)],[0,max_value],color='orange')
-    ax2.plot([scale_avg-(scale_stddev*2),scale_avg-(scale_stddev*2)],[0,max_value],color='orange')
-    ax2.plot([scale_avg+(scale_stddev*3),scale_avg+(scale_stddev*3)],[0,max_value],color='red')
-    ax2.plot([scale_avg-(scale_stddev*3),scale_avg-(scale_stddev*3)],[0,max_value],color='red')
-    label_str = "Mean: {:f}\nStdDev: {:f}\nNormStdDev: {:f}".format(scale_avg,scale_stddev,scale_stddev/scale_avg)
-    print(label_str)
-    # ax2.text(bins[0], max_value, label_str, fontsize=10, color='black',va='top')
-    # Draw Scatter Points
+    # Draw Reference Points
     ax1.scatter(sparse_x, sparse_y, c='black', alpha=0.5, s=4)
+
+    # Draw reference point labels
+    if draw_labels:
+        for k in data:
+            ax1.text(k['x'], k['y'], k['label'], color='black', fontsize=8, ha='left', va='top')
 
     # Set Axis
     if flip_x:
@@ -531,38 +414,47 @@ def generate_scalefactor_plot(data,metrics,excludestd=0,image=None,save_file=Non
         y_min = min(y)
         y_max = max(y)
     ax1.axis([x_min, x_max, y_min, y_max])
-    print("AX1 Axis: ",[x_min, x_max, y_min, y_max])
-    # ax2.axis([0, vmax, 0, 20])
-    # ax2.axis([0, 1, 0, 1])
+    # print("AX1 Axis: ",[x_min, x_max, y_min, y_max])
     cbar = plt.colorbar(sm, label='Scale Values',ax=ax1)
-    # colorbar.set_clim(0, max(sparse_error))   
 
-    # for x, y, label in zip(sparse_x, sparse_y, sparse_error):
-    if draw_labels:
-        for k in data:
-            ax1.text(k['x'], k['y'], k['label'], color='black', fontsize=8, ha='left', va='top')
-
-    # Add text or annotations to the second subplot (ax2)
-    # label_str = "Coverage: {}%\nGlobal Error: {}{}\nStd. Dev: {}{}\n{}".format(
-    #     metrics[4],metrics[2],units,metrics[3],units,note
-    # )
+    # Plot Scale Factor Data Histogram
+    hist, bins, _ = ax2.hist(scale, bins=5*n, edgecolor='black', alpha=1.0)
+    max_value = max(hist)
+    # Draw Exclusion Zone
+    ax2.plot([scale_avg+(scale_stddev*excludestd),scale_avg+(scale_stddev*excludestd)],[0,max_value],color='black')
+    ax2.plot([scale_avg-(scale_stddev*excludestd),scale_avg-(scale_stddev*excludestd)],[0,max_value],color='black')
+    ax2.add_patch(Rectangle((scale_avg-(scale_stddev*excludestd),0),(scale_stddev*excludestd*2),max_value,facecolor = 'black',fill=True,alpha=0.3))
+    # Draw Mean and Std Dev markers
+    ax2.plot([scale_avg,scale_avg],[0,max_value],color='green')
+    ax2.plot([scale_avg+scale_stddev,scale_avg+scale_stddev],[0,max_value],color='yellow')
+    ax2.plot([scale_avg-scale_stddev,scale_avg-scale_stddev],[0,max_value],color='yellow')
+    ax2.plot([scale_avg+(scale_stddev*2),scale_avg+(scale_stddev*2)],[0,max_value],color='orange')
+    ax2.plot([scale_avg-(scale_stddev*2),scale_avg-(scale_stddev*2)],[0,max_value],color='orange')
+    ax2.plot([scale_avg+(scale_stddev*3),scale_avg+(scale_stddev*3)],[0,max_value],color='red')
+    ax2.plot([scale_avg-(scale_stddev*3),scale_avg-(scale_stddev*3)],[0,max_value],color='red')
     
-    # ax2.text(0.01, 0.01, label_str, fontsize=12, color='black')
-    # Remove axis labels and ticks for the second subplot
-    # ax2.axis('off')
-    # Adjust the layout spacing
-    # plt.tight_layout()
+    # Add text or annotations to the second subplot (ax2)
+    label_str = f"Mean: {metrics['scale_avg']:.3f}\nStdDev: {metrics['scale_std']:.3f}\n" \
+                f"Normed: {metrics['norm_scale_std']:.3f}"
+    _, y_max = ax2.get_ylim()
+    x_min, x_max = ax2.get_xlim()
+    x_range = x_max - x_min
+    ax2.text(x_min+(x_range/100), y_max-(y_max/100), label_str, verticalalignment='top', fontsize=10, color='white',
+             path_effects=[path_effects.withStroke(linewidth=2, foreground="white")])
+    ax2.text(x_min+(x_range/100), y_max-(y_max/100), label_str, verticalalignment='top', fontsize=10, color='black')
 
-    ax1.set_title(title)
+    # Adjust the layout spacing
+    plt.tight_layout()
+
+    # SET AXIS TITLES AND LABELS ===== ===== ===== ===== ===== ===== ===== ===== 
+    ax1.set_title(metrics['test_name'] + f" (Scale Factors)\n[Hiding +/- {excludestd:.1f} dev]")
     ax2.set_title("Connection Scale Factor Histogram")
     ax2.set_xlabel("Scale Factor")
     ax2.set_ylabel("Count")
-    if save_file is not None:
-        # plt.show()
-        plt.savefig(save_file)
-        print("Saved: {}".format(save_file))
-        plt.close()
-    else:
-        plt.show()
 
-    return [scale_avg,scale_stddev,scale_stddev/scale_avg]
+    # SAVE / SHOW PLOT ===== ===== ===== ===== ===== ===== ===== ===== ===== ===== 
+    if save_file is not None:
+        plt.savefig(save_file,dpi=300)
+        print("Saved: {}".format(save_file))
+    if show_plot:
+        plt.show()
