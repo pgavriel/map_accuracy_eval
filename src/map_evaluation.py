@@ -49,7 +49,8 @@ def main(args):
                     metric['error_avg'],metric['error_std'],
                     metric['scale_avg'],metric['scale_std'],metric['norm_scale_std'],
                     metric['scaled_error_avg'],metric['scaled_error_std']]
-        metrics.log_to_csv(args.log_file, log_list,args.verbose)
+        metrics.log_to_csv(args.log_file, log_list,verbose=args.verbose)
+
 
 if __name__ == "__main__":
     # DEFAULT ARGUMENTS 
@@ -58,7 +59,7 @@ if __name__ == "__main__":
     eval_3d = False
     auto_scale = True
 
-    output_dir = "C:/Users/nullp/Projects/map_accuracy_eval/data/dev-testing"
+    output_dir = "C:/Users/nullp/Projects/map_accuracy_eval/output/point_method"
     log_name = "output_log.csv"
 
     test_name = "Plot Experiments"
@@ -66,7 +67,7 @@ if __name__ == "__main__":
 
     pts1_file = "C:/Users/nullp/Projects/map_accuracy_eval/data/example/metric_test3.csv"
     # pts1_file = csv_loader.open_csv_dialog('../data')
-    pts2_file = "C:/Users/nullp/Projects/map_accuracy_eval/data/example/metric_test5.csv"
+    pts2_file = "C:/Users/nullp/Projects/map_accuracy_eval/data/example/metric_test3.csv"
     # pts2_file = pts1_file
     use_headers = None    # Set to None if first line of csv has headers
     # use_headers = ['label','x','y']
@@ -81,9 +82,9 @@ if __name__ == "__main__":
     error_to_plot = 'point_errors' # or 'scaled_point_errors'
     exclude_std_devs = 2
     err_plot_name = os.path.join(output_dir,util.generate_unique_filename(f"point-errors"))
-    err_plot_name = None
+    # err_plot_name = None
     scale_plot_name = os.path.join(output_dir,util.generate_unique_filename(f"scale-factors"))
-    scale_plot_name = None
+    # scale_plot_name = None
 
     # Parse Arguments
     parser = argparse.ArgumentParser(description="Tool for calculating map accuracy metrics and creating plots.")
@@ -139,10 +140,9 @@ if __name__ == "__main__":
         os.makedirs(args.output_dir)
         print(f"Created Output Dir: {args.output_dir}")
 
-        args.log_file = os.path.join(args.output_dir,args.log_name)
+    args.log_file = os.path.join(args.output_dir,args.log_name)
 
     
-
     args.use_headers = use_headers
     # LOAD POINTS 
     if args.pts1_file is None:

@@ -12,9 +12,10 @@ from scipy.interpolate import griddata
 import point_manip as pm
 import utilities as util
 
-def log_to_csv(log_file, data_values,verbose=False):
+def log_to_csv(log_file, data_values,header=None,verbose=False):
     if verbose: print(f"Logging Metrics to: {log_file}")
-    header = ['Timestamp', 'Map Name', 'Note',
+    if header is None:
+        header = ['Timestamp', 'Map Name', 'Note',
              'Ground Truth File','Evaluation File',
              'Coverage', 
              'Error Average', 'Error Std Dev',
