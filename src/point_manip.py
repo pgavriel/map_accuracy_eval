@@ -301,31 +301,31 @@ def move_points_to(data, target):
     return translate_points(data, (x_offset, y_offset))
 
 #TODO: REIMPLEMENT
-def auto_align(truth_dict,eval_dict,verbose=True):
-    '''
-    Translates the eval_dict so that it's midpoint is aligned with
-    the midpoint of the truth_dict
-    Returns aligned_dict, [x_offset,y_offset]
-    '''
-    # print(verbose)
-    verbose = True
-    if verbose: print("AUTO ALIGN")
-    align_dict = eval_dict.copy()
+# def auto_align(truth_dict,eval_dict,verbose=True):
+#     '''
+#     Translates the eval_dict so that it's midpoint is aligned with
+#     the midpoint of the truth_dict
+#     Returns aligned_dict, [x_offset,y_offset]
+#     '''
+#     # print(verbose)
+#     verbose = True
+#     if verbose: print("AUTO ALIGN")
+#     align_dict = eval_dict.copy()
 
-    # Find midpoints of each reference point dictionary
-    test_midpoint = get_dict_midpoint(align_dict)
-    if verbose: print("Evaluation Midpoint: ",test_midpoint)
-    ref_midpoint = get_dict_midpoint(truth_dict)
-    if verbose: print("Ground Truth Midpoint: ",ref_midpoint)
+#     # Find midpoints of each reference point dictionary
+#     test_midpoint = get_dict_midpoint(align_dict)
+#     if verbose: print("Evaluation Midpoint: ",test_midpoint)
+#     ref_midpoint = get_dict_midpoint(truth_dict)
+#     if verbose: print("Ground Truth Midpoint: ",ref_midpoint)
 
-    # Determine midpoint offset
-    xy_off = [ref_midpoint[0]-test_midpoint[0],ref_midpoint[1]-test_midpoint[1]]
-    if verbose: print("Eval Midpoint Translation:",xy_off)
+#     # Determine midpoint offset
+#     xy_off = [ref_midpoint[0]-test_midpoint[0],ref_midpoint[1]-test_midpoint[1]]
+#     if verbose: print("Eval Midpoint Translation:",xy_off)
     
-    # Perform the translation to align the midpoints
-    align_dict = translate_dict(align_dict,xy_off)
+#     # Perform the translation to align the midpoints
+#     align_dict = translate_dict(align_dict,xy_off)
 
-    return align_dict, xy_off
+#     return align_dict, xy_off
 
 # ROTATION FUNCTIONS ====================================================================================
 def rotate(origin, point, angle):

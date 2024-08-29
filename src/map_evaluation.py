@@ -67,7 +67,7 @@ if __name__ == "__main__":
 
     pts1_file = "C:/Users/nullp/Projects/map_accuracy_eval/data/example/metric_test3.csv"
     # pts1_file = csv_loader.open_csv_dialog('../data')
-    pts2_file = "C:/Users/nullp/Projects/map_accuracy_eval/data/example/metric_test3.csv"
+    pts2_file = "C:/Users/nullp/Projects/map_accuracy_eval/data/example/metric_test5.csv"
     # pts2_file = pts1_file
     use_headers = None    # Set to None if first line of csv has headers
     # use_headers = ['label','x','y']

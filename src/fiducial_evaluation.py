@@ -67,13 +67,17 @@ class FiducialEvaluator:
         self.named_points = {}
         self.image = None
         self.display_image = None
+
         self.angle_tolerance = 15.0 # in Degrees
         self.distance_tolerance = 1.0 # in Fiducial Radii
         self.sc_ang_tol = 15.0 # in Degrees
-        self.sc_dist_tol = 1.0 # in Fiducial Radii
+        self.sc_dist_tol = 2.0 # in Fiducial Radii
+
         self.score = None
         self.score_reason = ""
         self.saved_scores = []
+        self.rad = None
+        self.radpoints = []
 
         # Create OpenCV window and set mouse callback
         cv2.namedWindow("Image")
@@ -109,6 +113,11 @@ class FiducialEvaluator:
         self.mode_lbl.pack(padx=10, pady=2)
         mode_button = tk.Button(self.control_panel, text="Switch Mode", command=self.switch_mode)
         mode_button.pack(padx=10, pady=2)
+
+        self.rad_lbl = tk.Label(self.control_panel,text=f"Current Radius: {self.rad}")
+        self.rad_lbl.pack(padx=10, pady=2)
+        rad_button = tk.Button(self.control_panel, text="Set Fiducial Radius", command=self.set_radius)
+        rad_button.pack(padx=10, pady=2)
 
         evaluate_button = tk.Button(self.control_panel, text="Evaluate (E)", command=self.evaluate_points)
         evaluate_button.pack(padx=10, pady=10)
@@ -155,6 +164,25 @@ class FiducialEvaluator:
             else:
                 print("All points have been selected.")
 
+    def set_radius_callback(self, event, x, y, flags, param):
+        if event == cv2.EVENT_LBUTTONDOWN:
+            self.radpoints.append((x,y))
+            print(f"Radius point {len(self.radpoints)} selected: ({x},{y})")
+            if len(self.radpoints) >= 2:
+                self.rad = pm.calc_distance(self.radpoints[0],self.radpoints[1])
+                if self.current_mode == 0: # cylinder
+                    self.rad = self.rad / 2 
+                self.rad = int(self.rad)
+                print(f"Radius set to {self.rad}.")
+                self.rad_lbl.config(text=f"Current Radius: {self.rad}")
+                cv2.setMouseCallback("Image", self.mouse_callback)
+
+    def set_radius(self):
+        print(f"Entering mode to set fiducial radius...\nPlease select 2 points: ")
+        self.radpoints = []
+        cv2.setMouseCallback("Image", self.set_radius_callback)
+
+
     def switch_mode(self,to_mode=None):
         if to_mode is None:
             self.current_mode = (self.current_mode + 1) % len(self.modes)
@@ -180,6 +208,9 @@ class FiducialEvaluator:
 
     def evaluate_points(self):
         if len(self.points) > 0: 
+            if self.rad is None:
+                print("Must set Radius first.")
+                return
             if self.current_mode == 0: # "cylinder":
                 self.calculate_cylinder_score()
                 print(f"Score: {self.score}")
@@ -216,7 +247,7 @@ class FiducialEvaluator:
         if len(self.points) != len(self.point_names):
             self.score_reason = "[INCOMPLETE]"
             self.midpoint = find_midpoint(self.points)
-            self.rad = 15
+            # self.rad = 15
             c = self.c3
             cv2.circle(self.display_image, self.midpoint, self.rad, c, 2)
             print(self.score_reason)
@@ -262,8 +293,8 @@ class FiducialEvaluator:
             print(self.score_reason)
         self.midpoint = find_midpoint(self.points)
         # print(self.midpoint)
-        self.rad = int(avg_diam/2)
-        cv2.circle(self.display_image, self.midpoint, int(avg_diam/2), c, 2)
+        # self.rad = int(avg_diam/2)
+        cv2.circle(self.display_image, self.midpoint, self.rad, c, 2)
 
     def calculate_cross_score(self):
         self.score = 0
@@ -273,18 +304,18 @@ class FiducialEvaluator:
         if len(self.points) != len(self.point_names):
             self.score_reason = "[INCOMPLETE]"
             self.midpoint = find_midpoint(self.points)
-            self.rad = 15
+            # self.rad = 15
             c = self.c3
             self.draw_cross(self.midpoint,self.rad,c)
             print(self.score_reason)
             return
         
         # Find Fiducial Radius
-        dist_sum = pm.calc_distance(self.named_points['1A'],self.named_points['1B']) \
-                 + pm.calc_distance(self.named_points['1C'],self.named_points['1B']) \
-                 + pm.calc_distance(self.named_points['2A'],self.named_points['2B']) \
-                 + pm.calc_distance(self.named_points['2C'],self.named_points['2B'])
-        self.rad = dist_sum // 4
+        # dist_sum = pm.calc_distance(self.named_points['1A'],self.named_points['1B']) \
+        #          + pm.calc_distance(self.named_points['1C'],self.named_points['1B']) \
+        #          + pm.calc_distance(self.named_points['2A'],self.named_points['2B']) \
+        #          + pm.calc_distance(self.named_points['2C'],self.named_points['2B'])
+        # self.rad = dist_sum // 4
         draw_bisector(self.display_image,self.named_points["1A"],self.named_points["1B"],self.named_points["1C"],length=self.rad*2)
         draw_bisector(self.display_image,self.named_points["2A"],self.named_points["2B"],self.named_points["2C"],length=self.rad*2)
 
