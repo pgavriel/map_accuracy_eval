@@ -3,9 +3,9 @@
 This package provides a toolkit for evaluating the accuracy between a map created by a robotic system, and a ground truth map. This is primarily done by identifying corresponding points in both the ground truth and evaluation map, giving each correspondance a unique label, and storing this information in separate CSV files with the fields [label, x, y] or [label, x, y, z] for 3D evaluations. Those CSV files can then be loaded in by the toolkit and metrics can be calculated.    
   
 **USEAGE**  
-* **qt_map_labeller.py** - Script is used to label 2D evaluation points within a map image. Points can easily be imported, edited, and exported in a format that can be used by the evaluation tool. *NOTE: For 3D evaluations, a tool like CloudCompare can be used to export labelled 3D point lists.*  
+* **map_labeller.py** - Script is used to label 2D evaluation points within a map image. Points can easily be imported, edited, and exported in a format that can be used by the evaluation tool. *NOTE: For 3D evaluations, a tool like CloudCompare can be used to export labelled 3D point lists.*  
 * **map_evaluation.py** -  This script takes in two sets of labelled points (and optionally a map background image), calculates and logs all relevant metrics between the two points, and generates plots to visualize the metrics when doing 2D evaluations. It functions exactly the same for 3D evaluations, but doesn't generate any plots, only metrics. These metrics are concerned with global error and score the maps accuracy holistically.  
-* **qt_fiducial_evaluation.py** - This tool is used for performing fiducial evaluations (currently either cylinder or splitcross type). Fiducials are artifacts placed within the mapping area to assess local errors within the map.    
+* **fiducial_evaluation.py** - This tool is used for performing fiducial evaluations (currently either cylinder or splitcross type). Fiducials are artifacts placed within the mapping area to assess local errors within the map.    
 * **align_pts_to_map.py** - Tool for aligning reference points to a corresponding map image and saving the new transformed points (for visualizing)  
   
 **METRICS**  
