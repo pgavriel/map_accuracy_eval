@@ -1,5 +1,5 @@
 from PyQt5.QtWidgets import QGraphicsView, QGraphicsScene, QGraphicsPixmapItem, QApplication
-from PyQt5.QtGui import QPixmap, QTransform, QMouseEvent, QPainter, QPen, QFont, QColor
+from PyQt5.QtGui import QPixmap, QTransform, QMouseEvent, QPainter, QPen, QFont
 from PyQt5.QtCore import Qt, QPointF, QSize, QPoint, QTimer
 import time, os
 import utilities as util
@@ -46,10 +46,11 @@ class ImageCanvas(QGraphicsView):
         self.scene.addItem(item)
         
         # Set up zoom and pan
-        self.setTransformationAnchor(QGraphicsView.AnchorUnderMouse)
+        # self.setTransformationAnchor(QGraphicsView.AnchorUnderMouse)
         self.setResizeAnchor(QGraphicsView.AnchorUnderMouse)
         self.setDragMode(QGraphicsView.NoDrag)  # Initially, no drag mode
         self.setCursor(Qt.ArrowCursor)
+        self.zoom_factor = 1.15
 
         # Add data and points
         self.data = []
@@ -74,9 +75,8 @@ class ImageCanvas(QGraphicsView):
         self.frame_count = 0
         self.last_frame_time = current_time
         
-
     def wheelEvent(self, event):
-        zoom_in_factor = 1.15
+        zoom_in_factor = self.zoom_factor
         zoom_out_factor = 1 / zoom_in_factor
         if event.angleDelta().y() > 0:
             zoom_factor = zoom_in_factor
@@ -148,7 +148,6 @@ class ImageCanvas(QGraphicsView):
         
         # Now overlay the text
         painter = QPainter(self.viewport())
-        
         
         # Assemble the status text string to draw
         if len(self.data) <= self.current_index:
