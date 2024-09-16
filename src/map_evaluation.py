@@ -17,7 +17,9 @@ def main(args):
     metric['gt_file'] = args.gt_file
     metric['eval_file'] = args.eval_file
     # CALCULATE COVERAGE
+    metric['cvg_total'] = len(data_gt)
     data_gt, data_eval, metric['coverage'] = metrics.calc_coverage(data_gt,data_eval,verbose=args.verbose)
+    metric['cvg_found'] = int(metric['cvg_total'] * metric['coverage'] / 100)
     # CALCULATE GLOBAL ERROR METRICS
     metric['point_errors'],metric['error_avg'],metric['error_std'] = metrics.calc_error(data_gt, data_eval,use_z=args.eval_3d,verbose=args.verbose)
     # CALCULATE SCALE FACTOR METRICS
@@ -27,16 +29,16 @@ def main(args):
     if auto_scale:
         # AUTO SCALE AND FIND ERROR METRICS AGAIN
         print(f"Scaling Eval Points based on found scale factor average ({metric['scale_avg']})...")
-        data_eval = pm.scale_points_wrt_origin(data_eval,metric['scale_avg'],args.eval_3d)
+        scaled_data_eval = pm.scale_points_wrt_origin(data_eval,metric['scale_avg'],args.eval_3d)
         # CALCULATE GLOBAL ERROR METRICS
-        metric['scaled_point_errors'],metric['scaled_error_avg'],metric['scaled_error_std'] = metrics.calc_error(data_gt, data_eval,use_z=args.eval_3d,verbose=args.verbose)
+        metric['scaled_point_errors'],metric['scaled_error_avg'],metric['scaled_error_std'] = metrics.calc_error(data_gt, scaled_data_eval,use_z=args.eval_3d,verbose=args.verbose)
     
     # GENERATE OUTPUT PLOTS
     if args.create_plots and not args.eval_3d:
         if args.create_err_plot:
-            metrics.generate_pointerror_contour_plot(data_eval,metric[args.error_to_plot],metric,args.map_image,args.err_plot_name,args.show_plots)
+            metrics.generate_pointerror_contour_plot(data_eval,metric[args.error_to_plot],metric,args.map_image,args.err_plot_name,args.show_plots,args.figsize)
         if args.create_scale_plot:
-            metrics.generate_scalefactor_plot(data_eval,metric,args.exclude_std_devs,args.map_image,args.scale_plot_name,args.show_plots)
+            metrics.generate_scalefactor_plot(data_eval,metric,args.exclude_std_devs,args.map_image,args.scale_plot_name,args.show_plots,args.figsize)
     
     # LOG RESULTS
     if log_results:
@@ -54,32 +56,45 @@ def main(args):
 
 if __name__ == "__main__":
     # DEFAULT ARGUMENTS 
-    verbose = True
+    verbose = False
     log_results = True
     eval_3d = False
     auto_scale = True
 
-    output_dir = "C:/Users/nullp/Projects/map_accuracy_eval/output/point_method"
+    # output_dir = "C:/Users/nullp/Projects/map_accuracy_eval/output/point_method"
+    default_output = "C:/Users/nullp/Projects/map_accuracy_eval/output/ua5/"
+    # output_dir = util.select_directory(default_output, "Select output dir")
+    output_dir = "C:/Users/nullp/Projects/map_accuracy_eval/output/test"
     log_name = "output_log.csv"
 
-    test_name = "Plot Experiments"
-    test_note = "Dev"
+    test_name = "Test"
+    test_note = "3rd Floor"
 
-    pts1_file = "C:/Users/nullp/Projects/map_accuracy_eval/data/example/metric_test3.csv"
-    # pts1_file = csv_loader.open_csv_dialog('../data')
-    pts2_file = "C:/Users/nullp/Projects/map_accuracy_eval/data/example/metric_test5.csv"
+    gt_2f_file = "C:/Users/nullp/Projects/map_accuracy_eval/data/ua5/GroundTruth/map_pts_2f.csv"
+    gt_3f_file = "C:/Users/nullp/Projects/map_accuracy_eval/data/ua5/GroundTruth/map_pts_3f.csv"
+
+    # pts1_file = "C:/Users/nullp/Projects/map_accuracy_eval/data/example/metric_test3.csv"
+    pts1_file = gt_2f_file
+
+    d = "C:/Users/nullp/Projects/map_accuracy_eval/data/ua5/"
+    # pts2_file = "C:/Users/nullp/Projects/map_accuracy_eval/data/example/metric_test5.csv"
     # pts2_file = pts1_file
+    pts2_file = csv_loader.open_csv_dialog(d)
+
     use_headers = None    # Set to None if first line of csv has headers
     # use_headers = ['label','x','y']
     # if eval_3d: use_headers.append('z')
-
-    map_image_file = "C:/Users/nullp/Projects/map_accuracy_eval/data/example/example_gt.png"
+    
+    d = "C:/Users/nullp/Projects/map_accuracy_eval/data/ua5/"
+    map_image_file = util.open_image_dialog(d)
     
     create_plots = True
+    figsize_inches = (16,8) # (8,8) default
     show_plots = True
     create_err_plot = True
     create_scale_plot = True
     error_to_plot = 'point_errors' # or 'scaled_point_errors'
+    # error_to_plot = 'scaled_point_errors' # or 'scaled_point_errors'
     exclude_std_devs = 2
     err_plot_name = os.path.join(output_dir,util.generate_unique_filename(f"point-errors"))
     # err_plot_name = None
@@ -127,6 +142,7 @@ if __name__ == "__main__":
     args.error_to_plot = error_to_plot
     args.err_plot_name = err_plot_name
     args.scale_plot_name = scale_plot_name
+    args.figsize = figsize_inches
 
     # Make sure output directory is selected and created.
     if args.output_dir is None:

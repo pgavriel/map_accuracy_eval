@@ -65,13 +65,16 @@ def save_image_dialog(image, initial_dir=".",initial_file=None):
     print(f"Screenshot saved: {file_path}")
     return file_path
 
-def select_directory(initial_dir="."):
+def select_directory(initial_dir=".", message=None):
     # Hide the root window
     root = tk.Tk()
     root.withdraw()
 
     # Open a directory selection dialog
-    directory = filedialog.askdirectory(title="Select a Default Folder",
+    title = "Select a Folder"
+    if message is not None:
+        title = message
+    directory = filedialog.askdirectory(title=title,
                                         initialdir=initial_dir)
     root.destroy()
     # If a directory is selected, print it
@@ -79,6 +82,7 @@ def select_directory(initial_dir="."):
         print("Selected directory:", directory)
     else:
         print("No directory selected.")
+        return None
 
     return directory
 

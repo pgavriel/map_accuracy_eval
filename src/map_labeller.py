@@ -24,7 +24,8 @@ class ImageCanvas(QGraphicsView):
         
         # Verify output dir
         if output_dir is None:
-            self.output_dir = util.select_directory()
+            default_output = "C:/Users/nullp/Projects/map_accuracy_eval/data/ua5/"
+            self.output_dir = util.select_directory(default_output)
             if self.output_dir is None:
                 print(f"No output directory selected, quitting.")
                 exit()
@@ -34,7 +35,7 @@ class ImageCanvas(QGraphicsView):
 
         # Add an image
         if map_image_file is None:
-            map_image_file = util.open_image_dialog('./data/example')
+            map_image_file = util.open_image_dialog(self.output_dir)
             if map_image_file is None:
                 print(f"No image selected, quitting.")
                 exit()
@@ -148,8 +149,15 @@ class ImageCanvas(QGraphicsView):
         
         # Now overlay the text
         painter = QPainter(self.viewport())
+
+        # Draw points on map
+        self.draw_on_map(painter)
         
-        # Assemble the status text string to draw
+        # End the painter
+        painter.end()
+
+    def draw_on_map(self, painter, save_output=False):
+         # Assemble the status text string to draw
         if len(self.data) <= self.current_index:
                 current_key = None
                 current_val = None
@@ -193,9 +201,20 @@ class ImageCanvas(QGraphicsView):
             offset = QPoint(5,-5) # Adjust position as needed
             viewport_point += offset
             painter.drawText(viewport_point, label)  
-        
+
+    def save_screenshot(self,save_file):
+        pixmap = QPixmap(self.size())
+        # Create a painter to render the view onto the QPixmap
+        painter = QPainter(pixmap)
+        # Render the QGraphicsView onto the pixmap
+        self.render(painter)
+        # Add custom draw procedures
+        self.draw_on_map(painter,True)
         # End the painter
         painter.end()
+        # Save the pixmap to the chosen file
+        pixmap.save(save_file)
+        print(f"Saved Image: {save_file}")
 
     def keyPressEvent(self, event):
         # Handle different key presses
@@ -206,6 +225,7 @@ class ImageCanvas(QGraphicsView):
             csv_path = csv_loader.save_csv_dialog(self.data,self.output_dir)
             im_file = os.path.join(os.path.dirname(csv_path),os.path.basename(csv_path)[:-4]+'.png')
             #TODO: Save Image File
+            self.save_screenshot(im_file)
             # print(f"IM FILE: {im_file}")
             # cv2.imwrite(im_file,draw_img)
             print(f"Saved {im_file}")
@@ -278,7 +298,9 @@ if __name__ == '__main__':
     app = QApplication([])
     # image_file = util.open_image_dialog('./data/example')
     image_file = "C:/Users/nullp/Projects/map_accuracy_eval/data/example/example_gt2.png"
-    out_dir = "C:/Users/nullp/Projects/map_accuracy_eval/output/test"
+    out_dir = "C:/Users/nullp/Projects/map_accuracy_eval/data/ua5/gt"
+    image_file = None
+    out_dir = None
     window = ImageCanvas(image_file,out_dir)
     window.show()
 

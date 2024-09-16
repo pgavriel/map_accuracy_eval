@@ -385,6 +385,7 @@ def scale_points(data, scale_factor,midpoint=None,verbose=True):
             print("{} -> {}".format((point['x'],point['y']),(scaled_point['x'],scaled_point['y'])))
     return scaled_data
 
+import copy
 def scale_points_wrt_origin(data, scale_factor, use_z=False):
     """
     Scales the 'x' and 'y' fields of the data object by the given scale factor. 
@@ -395,7 +396,8 @@ def scale_points_wrt_origin(data, scale_factor, use_z=False):
     :param use_z: Boolean, whether to scale the 'z' field as well.
     :return: The modified data object with scaled coordinates.
     """
-    for entry in data:
+    data_copy = copy.deepcopy(data)
+    for entry in data_copy:
         if 'x' in entry and 'y' in entry:
             entry['x'] *= scale_factor
             entry['y'] *= scale_factor
@@ -407,7 +409,7 @@ def scale_points_wrt_origin(data, scale_factor, use_z=False):
         elif use_z and 'z' not in entry:
             print("Warning: 'z' field not found in one or more entries.")
 
-    return data
+    return data_copy
 
 # TODO: Need to be reimplement auto_scale function (finds the optimal scale factor, 
 #       minimizing distance between point pairs of two data objects)

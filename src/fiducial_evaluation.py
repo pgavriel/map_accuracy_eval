@@ -59,13 +59,14 @@ class FiducialEvaluator(QGraphicsView):
         screen = QApplication.primaryScreen()
         screen_size = screen.size()
         # Set window size relative to display size (e.g., 50% of screen width and height)
-        width = int(screen_size.width() * 0.7)
+        width = int(screen_size.width() * 0.9)
         height = int(screen_size.height() * 0.7)
         self.resize(QSize(width, height))
         
         # Verify output dir
         if output_dir is None:
-            self.output_dir = util.select_directory()
+            default_output = "C:/Users/nullp/Projects/map_accuracy_eval/output/ua5/"
+            self.output_dir = util.select_directory(default_output)
             if self.output_dir is None:
                 print(f"No output directory selected, quitting.")
                 exit()
@@ -78,7 +79,8 @@ class FiducialEvaluator(QGraphicsView):
 
         # Add an image
         if map_image_file is None:
-            map_image_file = util.open_image_dialog('./data/example')
+            default_dir = "C:/Users/nullp/Projects/map_accuracy_eval/data/ua5/"
+            map_image_file = util.open_image_dialog(default_dir)
             if map_image_file is None:
                 print(f"No image selected, quitting.")
                 exit()
@@ -111,12 +113,12 @@ class FiducialEvaluator(QGraphicsView):
         self.saved_scores = []
 
         self.setting_radius = False
-        self.rad = 14
+        self.rad = 15
         self.radpoints = []
 
         # Set Grading Thresholds
         self.angle_tolerance = 15.0 # in Degrees
-        self.distance_tolerance = 1.0 # in Fiducial Radii
+        self.distance_tolerance = 1.5 # in Fiducial Radii
         self.sc_ang_tol = 15.0 # in Degrees
         self.sc_dist_tol = 2.0 # in Fiducial Radii
 
@@ -657,6 +659,12 @@ class FiducialEvaluator(QGraphicsView):
             else:
                 reasons[count] = f['reason']
 
+        # Rescale
+        # scale_factor = 1/self.current_zoom
+        # self.current_zoom *= scale_factor
+        # self.scale(scale_factor,scale_factor)
+        # print(f"NEW ZOOM {self.current_zoom}")
+
         ts = util.timestamp()
         image_name = ts + "_fiducials.png"
         image_file = os.path.join(self.output_dir,image_name)
@@ -727,9 +735,9 @@ if __name__ == '__main__':
     app = QApplication([])
     # image_file = util.open_image_dialog('./data/example')
     image_file = None
-    image_file = "C:/Users/nullp/Projects/map_accuracy_eval/data/example/example_gt2.png"
+    # image_file = "C:/Users/nullp/Projects/map_accuracy_eval/data/example/example_gt2.png"
     out_dir = None
-    out_dir = "C:/Users/nullp/Projects/map_accuracy_eval/output/test"
+    # out_dir = "C:/Users/nullp/Projects/map_accuracy_eval/output/test"
     window = FiducialEvaluator(image_file,out_dir)
     window.show()
 

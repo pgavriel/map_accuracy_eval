@@ -208,7 +208,7 @@ def calc_scale_factors(data_gt,data_eval,use_z=False,match_by='label',verbose=Tr
     return [scale_factors, scale_avg, scale_std]
 
 
-def generate_pointerror_contour_plot(data,point_errors,metrics,image=None,save_file=None,show_plot=True):
+def generate_pointerror_contour_plot(data,point_errors,metrics,image=None,save_file=None,show_plot=True,figsize=(8,8)):
     flip_x = False
     flip_y = True
     draw_labels = True
@@ -227,7 +227,7 @@ def generate_pointerror_contour_plot(data,point_errors,metrics,image=None,save_f
     # vmax = 50
 
     # Create a regular grid for interpolation
-    grid_resolution = 250
+    grid_resolution = 500
     pad = 50
     x = np.linspace(min(sparse_x)-pad, max(sparse_x)+pad, grid_resolution)
     y = np.linspace(min(sparse_y)-pad, max(sparse_y)+pad, grid_resolution)
@@ -237,7 +237,7 @@ def generate_pointerror_contour_plot(data,point_errors,metrics,image=None,save_f
     Z = griddata((sparse_x, sparse_y), sparse_error, (X, Y), method='linear')
 
     # Create the figure layout
-    fig = plt.figure(figsize=(8, 8))
+    fig = plt.figure(figsize=figsize)
     gs = GridSpec(2, 1, height_ratios=[4, 1])
     ax1 = plt.subplot(gs[0])
     ax2 = plt.subplot(gs[1])
@@ -279,7 +279,7 @@ def generate_pointerror_contour_plot(data,point_errors,metrics,image=None,save_f
     label_str = f"[TITLE] {metrics['test_name']} - {metrics['test_note']}\n" \
                 + f"[GROUND TRUTH FILE] {metrics['gt_file']}\n" \
                 + f"[EVALUATION FILE] {metrics['eval_file']}\n\n" \
-                + f"[METRICS]\nCoverage: {metrics['coverage']}\n" \
+                + f"[METRICS]\nCoverage: {metrics['coverage']} ({metrics['cvg_found']}/{metrics['cvg_total']} points)\n" \
                 + f"Error Avg: {metrics['error_avg']:.2f} ({metrics['error_std']:.2f} std dev)\n" \
                 + f"Scale Avg: {metrics['scale_avg']:.2f} ({metrics['scale_std']:.2f} std dev)"  
     # Add text or annotations to the second subplot (ax2)
@@ -306,7 +306,7 @@ def generate_pointerror_contour_plot(data,point_errors,metrics,image=None,save_f
     if show_plot:
         plt.show()
         
-def generate_scalefactor_plot(data,metrics,excludestd=0,image=None,save_file=None,show_plot=True):
+def generate_scalefactor_plot(data,metrics,excludestd=0,image=None,save_file=None,show_plot=True,figsize=(8,8)):
     n = len(metrics['point_scales'])
     print(f"Using histogram with 5N ({n*5}) bins. (N={n})")
     flip_x = False
@@ -361,7 +361,7 @@ def generate_scalefactor_plot(data,metrics,excludestd=0,image=None,save_file=Non
     y = np.linspace(min(sparse_y)-pad, max(sparse_y)+pad, grid_resolution)
 
     # Create a figure with a subplot grid
-    fig = plt.figure(figsize=(8, 8))
+    fig = plt.figure(figsize=figsize)
     gs = GridSpec(2, 1, height_ratios=[3, 1])
     ax1 = plt.subplot(gs[0])
     ax2 = plt.subplot(gs[1])
