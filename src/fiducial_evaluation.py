@@ -341,6 +341,8 @@ class FiducialEvaluator(QGraphicsView):
         if event.key() == Qt.Key_Q: # Q: Quit
             QApplication.quit()  # Quit the application when Q is pressed
 
+        elif event.key() == Qt.Key_F: # Fit map in window
+            self.fit_in_window()
         elif event.key() == Qt.Key_I: # I: Select Image
             self.select_image()
         elif event.key() == Qt.Key_M: # M: Switch Mode
@@ -386,9 +388,38 @@ class FiducialEvaluator(QGraphicsView):
         self.frame_count = 0
         self.last_frame_time = current_time
 
+    def fit_in_window(self):
+        # Get the size of the window (the QGraphicsView)
+        self.viewport().update()
+        window_size = self.size()
+        print(f"[Window Size]\t{window_size.width()} x {window_size.height()}")
+        # Get the size of the background image
+        background_image_size = self.img_pixmap.size()  
+        print(f"[Image Size]\t{background_image_size.width()} x {background_image_size.height()}")
+        
+        # Calculate scale factors for width and height to fit the image in the window
+        scale_w = window_size.width() / background_image_size.width()
+        scale_h = window_size.height() / background_image_size.height()
+        
+        # Use the smaller scale factor to maintain aspect ratio
+        scale_factor = min(scale_w, scale_h)
+        print(f"[Scales] \t{scale_w:.2f} x {scale_h:.2f} (Scaling by {scale_factor:.2f})")
+        
+        # Apply scaling to the QGraphicsView
+        self.resetTransform()  # Reset any existing transformations
+        self.scale(scale_factor, scale_factor)
+        self.current_zoom = scale_factor
+        print(f"[Zoom: {self.current_zoom:.2f}]")
+
+        # Center the image in the view
+        self.centerOn(background_image_size.width() / 2, background_image_size.height() / 2)
+        self.viewport().update()
+
     def save_screenshot(self,save_file):
-        pixmap = QPixmap(self.size())
+        # Fit image in window
+        self.fit_in_window()
         # Create a painter to render the view onto the QPixmap
+        pixmap = QPixmap(self.size())
         painter = QPainter(pixmap)
         # Render the QGraphicsView onto the pixmap
         self.render(painter)

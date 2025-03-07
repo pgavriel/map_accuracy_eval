@@ -24,7 +24,7 @@ class ImageCanvas(QGraphicsView):
         
         # Verify output dir
         if output_dir is None:
-            default_output = "C:/Users/nullp/Projects/map_accuracy_eval/data/ua5/"
+            default_output = "C:/Users/nullp/Projects/map_accuracy_eval/data/"
             self.output_dir = util.select_directory(default_output)
             if self.output_dir is None:
                 print(f"No output directory selected, quitting.")
@@ -39,19 +39,22 @@ class ImageCanvas(QGraphicsView):
             if map_image_file is None:
                 print(f"No image selected, quitting.")
                 exit()
+        self.map_image_file = map_image_file
         print(f"Opening image file: {map_image_file}")
-        pixmap = QPixmap(map_image_file)
-        item = QGraphicsPixmapItem(pixmap)
+        self.img_pixmap = QPixmap(map_image_file)
+        item = QGraphicsPixmapItem(self.img_pixmap)
         item.setOpacity(1.0)  # Set alpha
         item.setTransform(QTransform().rotate(0))  # Set rotation
         self.scene.addItem(item)
         
         # Set up zoom and pan
         # self.setTransformationAnchor(QGraphicsView.AnchorUnderMouse)
+        self.setTransformationAnchor(QGraphicsView.AnchorUnderMouse)
         self.setResizeAnchor(QGraphicsView.AnchorUnderMouse)
         self.setDragMode(QGraphicsView.NoDrag)  # Initially, no drag mode
         self.setCursor(Qt.ArrowCursor)
-        self.zoom_factor = 1.15
+        self.zoom_factor = 1.25
+        self.current_zoom = 1.0
 
         # Add data and points
         self.data = []
@@ -67,6 +70,9 @@ class ImageCanvas(QGraphicsView):
         self.fps_timer = QTimer()
         self.fps_timer.timeout.connect(self.update_fps)
         self.fps_timer.start(1000)  # Update FPS every second
+
+        
+        self.fit_in_window()
         
     def update_fps(self):
         # Calculate and update FPS
@@ -76,6 +82,33 @@ class ImageCanvas(QGraphicsView):
         self.frame_count = 0
         self.last_frame_time = current_time
         
+    def fit_in_window(self):
+        # Get the size of the window (the QGraphicsView)
+        self.viewport().update()
+        window_size = self.size()
+        print(f"[Window Size]\t{window_size.width()} x {window_size.height()}")
+        # Get the size of the background image
+        background_image_size = self.img_pixmap.size()  
+        print(f"[Image Size]\t{background_image_size.width()} x {background_image_size.height()}")
+        
+        # Calculate scale factors for width and height to fit the image in the window
+        scale_w = window_size.width() / background_image_size.width()
+        scale_h = window_size.height() / background_image_size.height()
+        
+        # Use the smaller scale factor to maintain aspect ratio
+        scale_factor = min(scale_w, scale_h)
+        print(f"[Scales] \t{scale_w:.2f} x {scale_h:.2f} (Scaling by {scale_factor:.2f})")
+        
+        # Apply scaling to the QGraphicsView
+        self.resetTransform()  # Reset any existing transformations
+        self.scale(scale_factor, scale_factor)
+        self.current_zoom = scale_factor
+        print(f"[Zoom: {self.current_zoom:.2f}]")
+
+        # Center the image in the view
+        self.centerOn(background_image_size.width() / 2, background_image_size.height() / 2)
+        self.viewport().update()
+        
     def wheelEvent(self, event):
         zoom_in_factor = self.zoom_factor
         zoom_out_factor = 1 / zoom_in_factor
@@ -83,9 +116,11 @@ class ImageCanvas(QGraphicsView):
             zoom_factor = zoom_in_factor
         else:
             zoom_factor = zoom_out_factor
+        self.current_zoom *= zoom_factor
+        print(f"[Zoom: {self.current_zoom:.2f}]")
         self.scale(zoom_factor, zoom_factor)
-        super().wheelEvent(event)
-        self.viewport().update()  # Trigger paintEvent when resizing  
+        # super().wheelEvent(event)
+        # self.viewport().update()  # Trigger paintEvent when resizing  
 
     def mousePressEvent(self, event: QMouseEvent):
         if event.button() == Qt.LeftButton:
@@ -158,13 +193,17 @@ class ImageCanvas(QGraphicsView):
 
     def draw_on_map(self, painter, save_output=False):
          # Assemble the status text string to draw
-        if len(self.data) <= self.current_index:
-                current_key = None
-                current_val = None
+        if save_output:
+             img_file = os.path.basename(self.map_image_file)
+             status_str = f"{len(self.data)} Points Identified (File: {img_file})"
         else:
-            current_key = self.data[self.current_index]['label']
-            current_val = [self.data[self.current_index]['x'],self.data[self.current_index]['y']]
-        status_str = "{}/{} - {}: {}".format(self.current_index+1,len(self.data),current_key,current_val)
+            if len(self.data) <= self.current_index:
+                    current_key = None
+                    current_val = None
+            else:
+                current_key = self.data[self.current_index]['label']
+                current_val = [self.data[self.current_index]['x'],self.data[self.current_index]['y']]
+            status_str = "{}/{} - {}: {}".format(self.current_index+1,len(self.data),current_key,current_val)
         text_position = QPointF(10, 30)  # Offset from the top-left corner
         shadow_position = QPointF(14, 34)
         # Customize font, color, and position
@@ -178,10 +217,11 @@ class ImageCanvas(QGraphicsView):
         painter.drawText(text_position, status_str)
         
         # Draw FPS
-        painter.setFont(QFont("Arial", 12, QFont.Normal))
-        painter.setPen(QPen(Qt.black, 3)) 
-        fps_position = QPointF(14, 60)
-        painter.drawText(fps_position, f"FPS: {int(self.fps)}")
+        if not save_output:
+            painter.setFont(QFont("Arial", 12, QFont.Normal))
+            painter.setPen(QPen(Qt.black, 3)) 
+            fps_position = QPointF(14, 60)
+            painter.drawText(fps_position, f"FPS: {int(self.fps)}")
 
         # Draw all reference points
         painter.setFont(QFont("Arial", 14, QFont.Normal))
@@ -203,8 +243,10 @@ class ImageCanvas(QGraphicsView):
             painter.drawText(viewport_point, label)  
 
     def save_screenshot(self,save_file):
-        pixmap = QPixmap(self.size())
+        # Zoom out
+        self.fit_in_window()
         # Create a painter to render the view onto the QPixmap
+        pixmap = QPixmap(self.size())
         painter = QPainter(pixmap)
         # Render the QGraphicsView onto the pixmap
         self.render(painter)
@@ -221,9 +263,12 @@ class ImageCanvas(QGraphicsView):
         if event.key() == Qt.Key_Q:
             QApplication.quit()  # Quit the application when Q is pressed
         
+        elif event.key() == Qt.Key_F: # FIT IN WINDOW
+            self.fit_in_window()
         elif event.key() == Qt.Key_X: # EXPORT CSV
-            csv_path = csv_loader.save_csv_dialog(self.data,self.output_dir)
-            im_file = os.path.join(os.path.dirname(csv_path),os.path.basename(csv_path)[:-4]+'.png')
+            default_csv_name = os.path.basename(self.map_image_file).split(".")[0] + ".csv"
+            csv_path = csv_loader.save_csv_dialog(self.data,self.output_dir,default_csv_name)
+            im_file = os.path.join(os.path.dirname(csv_path),os.path.basename(csv_path)[:-4]+'_labels.png')
             #TODO: Save Image File
             self.save_screenshot(im_file)
             # print(f"IM FILE: {im_file}")
@@ -298,9 +343,9 @@ if __name__ == '__main__':
     app = QApplication([])
     # image_file = util.open_image_dialog('./data/example')
     image_file = "C:/Users/nullp/Projects/map_accuracy_eval/data/example/example_gt2.png"
-    out_dir = "C:/Users/nullp/Projects/map_accuracy_eval/data/ua5/gt"
+    out_dir = "C:/Users/nullp/Projects/map_accuracy_eval/data/devens"
     image_file = None
-    out_dir = None
+    # out_dir = None
     window = ImageCanvas(image_file,out_dir)
     window.show()
 

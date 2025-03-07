@@ -12,13 +12,13 @@ from scipy.interpolate import griddata
 import point_manip as pm
 import utilities as util
 
-def log_to_csv(log_file, data_values,header=None,verbose=False):
+def log_to_csv(log_file, data_values,header=None,verbose=False,unit="(m)"):
     if verbose: print(f"Logging Metrics to: {log_file}")
     if header is None:
         header = ['Timestamp', 'Map Name', 'Note',
              'Ground Truth File','Evaluation File',
-             'Coverage', 
-             'Error Average', 'Error Std Dev',
+             'Coverage Found','Coverage Total','Coverage %', 
+             f'Error Average {unit}', f'Error Std Dev {unit}',
              'Scale Average', 'Scale Std Dev', 'Normalized Scale Std Dev',
              'Scaled Error Average', 'Scaled Error Std Dev']  # Adjust the header columns as needed
     
@@ -48,7 +48,7 @@ def log_to_csv(log_file, data_values,header=None,verbose=False):
 
 def initialize_metrics(metric_list=None):
     if metric_list is None:
-        metric_list = ['coverage',
+        metric_list = ['cvg_found','cvg_total','coverage',
                        'gt_file','eval_file',
                        'point_errors','error_avg','error_std',
                        'point_scales','scale_avg','scale_std','norm_scale_std',
@@ -208,7 +208,7 @@ def calc_scale_factors(data_gt,data_eval,use_z=False,match_by='label',verbose=Tr
     return [scale_factors, scale_avg, scale_std]
 
 
-def generate_pointerror_contour_plot(data,point_errors,metrics,image=None,save_file=None,show_plot=True,figsize=(8,8)):
+def generate_pointerror_contour_plot(data,point_errors,metrics,image=None,save_file=None,show_plot=True,figsize=(8,8),unit=None,unit_scale=1.0):
     flip_x = False
     flip_y = True
     draw_labels = True
@@ -218,13 +218,13 @@ def generate_pointerror_contour_plot(data,point_errors,metrics,image=None,save_f
     for p in data:
         sparse_x.append(p['x'])
         sparse_y.append(p['y'])
-        sparse_error.append(point_errors[p['label']])
+        sparse_error.append(point_errors[p['label']]*unit_scale)
 
     # Min and Max error values for color scaling
     vmin = min(sparse_error)
     vmax = max(sparse_error)
-    # vmin = 0 
-    # vmax = 50
+    vmin = 0 
+    vmax = 3
 
     # Create a regular grid for interpolation
     grid_resolution = 500
@@ -248,16 +248,27 @@ def generate_pointerror_contour_plot(data,point_errors,metrics,image=None,save_f
         ax1.imshow(image,zorder=1)
 
     # Draw Contour Plot
-    contour = ax1.contourf(X, Y, Z, levels=20, cmap='RdYlGn_r',alpha=0.7,vmin=vmin, vmax=vmax)
-    colorbar = plt.colorbar(contour,label="Global Error") 
+    # Constrain Z values
+    if vmax < max(sparse_error):
+        print(f"Constraining Z [{vmin}-{vmax}]")
+        Z = np.clip(Z, vmin, vmax)
+    # specify levels from vmim to vmax
+    step = (vmax-vmin)/50
+    levels = np.arange(vmin, vmax+step, step)
+    contour = ax1.contourf(X, Y, Z, levels=levels, cmap='RdYlGn_r',alpha=0.7,vmin=vmin, vmax=vmax)
+    color_ticks = np.linspace(vmin,vmax,11)
+    # print(color_ticks)
+    color_label = f"Global Error ({unit})" if unit is not None else "Global Error"
+    colorbar = plt.colorbar(contour,label=color_label,ticks=color_ticks)
 
-    # Draw Scatter Points
-    ax1.scatter(sparse_x, sparse_y, c='black', alpha=0.5, s=4)
-
-    # Draw Reference Point Labels
+    # Draw reference point labels
     if draw_labels:
-        for p in data:
-            ax1.text(p['x'], p['y'], p['label'], color='black', fontsize=8, ha='left', va='top')
+        for k in data:
+            ax1.text(k['x'], k['y'], k['label'], color='black', fontsize=8, ha='left', va='top',
+                     bbox=dict(facecolor="white", edgecolor="none", pad=0,alpha=0.5))
+            
+    # Draw Reference Points
+    ax1.scatter(sparse_x, sparse_y, c='black', alpha=0.75, s=4, edgecolors='white', linewidths=0.5)
 
     # Set Axis
     if flip_x:
@@ -276,12 +287,16 @@ def generate_pointerror_contour_plot(data,point_errors,metrics,image=None,save_f
     ax2.axis([0, 1, 1, 0])
 
     # Create lower subplot (metrics label)
+    if unit is None: unit = ""
+    s = unit_scale
     label_str = f"[TITLE] {metrics['test_name']} - {metrics['test_note']}\n" \
                 + f"[GROUND TRUTH FILE] {metrics['gt_file']}\n" \
                 + f"[EVALUATION FILE] {metrics['eval_file']}\n\n" \
-                + f"[METRICS]\nCoverage: {metrics['coverage']} ({metrics['cvg_found']}/{metrics['cvg_total']} points)\n" \
-                + f"Error Avg: {metrics['error_avg']:.2f} ({metrics['error_std']:.2f} std dev)\n" \
-                + f"Scale Avg: {metrics['scale_avg']:.2f} ({metrics['scale_std']:.2f} std dev)"  
+                + f"[METRICS]\n" \
+                + f"Coverage: {metrics['coverage']}% ({metrics['cvg_found']}/{metrics['cvg_total']} points)\n" \
+                + f"Error Avg: {metrics['error_avg']*s:.2f}{unit} ({metrics['error_std']*s:.2f} std dev)\n" \
+                + f"Scale Avg: {metrics['scale_avg']:.2f} ({metrics['scale_std']:.2f} std dev)\n" \
+                + f"Scaled Error Avg: {metrics['scaled_error_avg']*s:.2f}{unit} ({metrics['scaled_error_std']*s:.2f} std dev)" 
     # Add text or annotations to the second subplot (ax2)
     ax2.text(0.01, 0.04, label_str, verticalalignment='top', fontsize=10, color='black')
     # Set the edge color and line width for the subplot's border (black border)
@@ -306,8 +321,19 @@ def generate_pointerror_contour_plot(data,point_errors,metrics,image=None,save_f
     if show_plot:
         plt.show()
         
-def generate_scalefactor_plot(data,metrics,excludestd=0,image=None,save_file=None,show_plot=True,figsize=(8,8)):
-    n = len(metrics['point_scales'])
+def generate_scalefactor_plot(data,metrics,excludestd=0,image=None,save_file=None,show_plot=True,figsize=(8,8),use_scaled_data=True):
+    if use_scaled_data:
+        scales_key = 'scaled_point_scales'
+        avg_key = 'scaled_scale_avg'
+        std_key = 'scaled_scale_std'
+        norm_key = 'scaled_norm_scale_std'
+    else:
+        scales_key = 'point_scales'
+        avg_key = 'scale_avg'
+        std_key = 'scale_std'
+        norm_key = 'norm_scale_std'
+
+    n = len(metrics[scales_key])
     print(f"Using histogram with 5N ({n*5}) bins. (N={n})")
     flip_x = False
     flip_y = True
@@ -322,13 +348,13 @@ def generate_scalefactor_plot(data,metrics,excludestd=0,image=None,save_file=Non
     x2 = []
     y2 = []
     scale = []
-    for p in metrics['point_scales']:
-        for k in metrics['point_scales'][p]:
+    for p in metrics[scales_key]:
+        for k in metrics[scales_key][p]:
             x1.append(data_lookup[p]['x'])
             y1.append(data_lookup[p]['y'])
             x2.append(data_lookup[k]['x'])
             y2.append(data_lookup[k]['y'])
-            scale.append(metrics['point_scales'][p][k])
+            scale.append(metrics[scales_key][p][k])
 
     # Coordinates used for scatter plot
     sparse_x = []
@@ -341,8 +367,8 @@ def generate_scalefactor_plot(data,metrics,excludestd=0,image=None,save_file=Non
     vmin = min(scale)
     vmax = max(scale)
     print("Scale min:{}  max:{}".format(vmin,vmax))
-    scale_avg = metrics['scale_avg']
-    scale_stddev = metrics['scale_std']
+    scale_avg = metrics[avg_key]
+    scale_stddev = metrics[std_key]
     print("Avg:{}  StdDev:{}".format(scale_avg,scale_stddev))
     # Set vmin and vmax for the colorscale
     if scale_stddev < 0.0000001:
@@ -362,7 +388,7 @@ def generate_scalefactor_plot(data,metrics,excludestd=0,image=None,save_file=Non
 
     # Create a figure with a subplot grid
     fig = plt.figure(figsize=figsize)
-    gs = GridSpec(2, 1, height_ratios=[3, 1])
+    gs = GridSpec(2, 1, height_ratios=[3, 1], hspace=0.141)
     ax1 = plt.subplot(gs[0])
     ax2 = plt.subplot(gs[1])
 
@@ -393,13 +419,16 @@ def generate_scalefactor_plot(data,metrics,excludestd=0,image=None,save_file=Non
             color = sm.to_rgba(scale[i])  # Map the value to a color
             ax1.plot([x1[i], x2[i]], [y1[i], y2[i]], color=color, alpha=0.5)
 
-    # Draw Reference Points
-    ax1.scatter(sparse_x, sparse_y, c='black', alpha=0.5, s=4)
-
+    
     # Draw reference point labels
     if draw_labels:
         for k in data:
-            ax1.text(k['x'], k['y'], k['label'], color='black', fontsize=8, ha='left', va='top')
+            ax1.text(k['x'], k['y'], k['label'], color='black', fontsize=8, ha='left', va='top',
+                     bbox=dict(facecolor="white", edgecolor="none", pad=0,alpha=0.5))
+            
+    # Draw Reference Points
+    ax1.scatter(sparse_x, sparse_y, c='black', alpha=0.75, s=4, edgecolors='white', linewidths=0.5)
+
 
     # Set Axis
     if flip_x:
@@ -435,8 +464,8 @@ def generate_scalefactor_plot(data,metrics,excludestd=0,image=None,save_file=Non
     ax2.plot([scale_avg-(scale_stddev*3),scale_avg-(scale_stddev*3)],[0,max_value],color='red')
     
     # Add text or annotations to the second subplot (ax2)
-    label_str = f"Mean: {metrics['scale_avg']:.3f}\nStdDev: {metrics['scale_std']:.3f}\n" \
-                f"Normed: {metrics['norm_scale_std']:.3f}"
+    label_str = f"Mean: {metrics[avg_key]:.3f}\nStdDev: {metrics[std_key]:.3f}\n" \
+                f"Normed: {metrics[norm_key]:.3f}"
     _, y_max = ax2.get_ylim()
     x_min, x_max = ax2.get_xlim()
     x_range = x_max - x_min
@@ -446,12 +475,12 @@ def generate_scalefactor_plot(data,metrics,excludestd=0,image=None,save_file=Non
 
     # Adjust the layout spacing
     plt.tight_layout()
-
+    plt.subplots_adjust(top=0.95)
     # SET AXIS TITLES AND LABELS ===== ===== ===== ===== ===== ===== ===== ===== 
-    ax1.set_title(metrics['test_name'] + f" (Scale Factors)\n[Hiding +/- {excludestd:.1f} dev]")
+    ax1.set_title(metrics['test_name'] + f" (Scale Factors)\n[Hiding +/- {excludestd:.1f} dev]",pad=0)
     ax2.set_title("Connection Scale Factor Histogram")
-    ax2.set_xlabel("Scale Factor")
-    ax2.set_ylabel("Count")
+    ax2.set_xlabel("Scale Factor", labelpad=0)
+    ax2.set_ylabel("Count", labelpad=0)
 
     # SAVE / SHOW PLOT ===== ===== ===== ===== ===== ===== ===== ===== ===== ===== 
     if save_file is not None:
