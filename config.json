@@ -1,0 +1,12 @@
+{
+    "root_directory":       "C:/Users/nullp/Projects/map_accuracy_eval/data/german-open",
+    "ground_truth_file":    "groundtruth/gt1_cleaned_color_downsample1_5mm.ply",
+    "eval_file":            null,
+    "event_name":           "Prelim 1",
+    "note":                 "AutonOhm",
+    "dist_threshold":       0.05,
+    "log_results":          true,
+    "log_file":             "test_log.csv",
+    "save_outliers":        true,
+    "verbose":              true
+}

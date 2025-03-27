@@ -230,14 +230,18 @@ def match_data_by_field(data1, data2, match_by, verbose=True):
     
     # Filter the data1 and data2 based on the matching values
     filtered_data1 = [entry for entry in data1 if entry[match_by] in matching_values]
+    excl_data1 = [entry['label'] for entry in data1 if entry[match_by] not in matching_values]
     filtered_data2 = [entry for entry in data2 if entry[match_by] in matching_values]
+    excl_data2 = [entry['label'] for entry in data2 if entry[match_by] not in matching_values]
 
     if len(data1) != len(filtered_data1):
         diff = len(data1) - len(filtered_data1)
-        print(f"WARNING: {diff} entries filtered from Data 1 due to mismatch.")
+        print(f"WARNING: {diff} entries filtered from Data 1 due to mismatch. (Not present in Data 2)")
+        print(f"Removed from Data 1: {excl_data1}")
     if len(data2) != len(filtered_data2):
         diff = len(data2) - len(filtered_data2)
-        print(f"WARNING: {diff} entries filtered from Data 2 due to mismatch.")
+        print(f"WARNING: {diff} entries filtered from Data 2 due to mismatch. (Not present in Data 1)")
+        print(f"Removed from Data 2: {excl_data2}")
 
     if verbose:
         print(f"Filtered Data1:")

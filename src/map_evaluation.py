@@ -7,6 +7,33 @@ import csv_loader
 import utilities as util
 import calculate_metrics as metrics
 
+# def remove_from_data(data,label):
+#     for i, d
+def print_point_error_results(point_error_dict, threshold=0.5):
+    point_sum = 0
+    discard_thresh = 2.5
+    discard_list = []
+    for key in point_error_dict:
+        points = -1
+        if "ar_tag" in key: points = 1
+        if "hazmat" in key: points = 2
+        if "real_object" in key: points = 10
+        if "heat_signature" in key: points = 15
+        val = point_error_dict[key]
+        if val <= threshold:
+            print(f"[{key}][{val:.3f}]\tSCORE +{points}")
+            point_sum += points
+        else:
+            print(f"[{key}][{val:.3f}]\t--")
+
+        if val >= discard_thresh:
+            discard_list.append(key)
+    print(f"TOTAL DETECTION SCORE: {point_sum}\n")
+
+    print(f"SHOULD REMOVE: {discard_list}")
+    print(point_error_dict)
+    return point_sum, discard_list
+
 def main(args):
     data_gt = args.data_gt
     data_eval = args.data_eval
@@ -24,6 +51,17 @@ def main(args):
     metric['cvg_found'] = len(data_eval)
     # CALCULATE GLOBAL ERROR METRICS
     metric['point_errors'],metric['error_avg'],metric['error_std'] = metrics.calc_error(data_gt, data_eval,use_z=args.eval_3d,verbose=args.verbose)
+    
+    # FOR ROBOCUP GERMAN OPEN:
+    metric['detection_thresh'] = 1.5
+    metric['detection_score'], discard_list = print_point_error_results(metric['point_errors'],metric['detection_thresh'])
+    # for k in discard_list:
+    #     for x, y in zip(data_eval, data_gt):
+    #         data_eval.pop(k)
+    #         data_gt.pop(k)
+    # metric['point_errors'],metric['error_avg'],metric['error_std'] = metrics.calc_error(data_gt, data_eval,use_z=args.eval_3d,verbose=args.verbose)
+    # metric['detection_score'], data_eval = print_point_error_results(metric['point_errors'],metric['detection_thresh'])
+
     # CALCULATE SCALE FACTOR METRICS
     metric['point_scales'],metric['scale_avg'],metric['scale_std'] = metrics.calc_scale_factors(data_gt, data_eval,use_z=args.eval_3d,verbose=args.verbose)
     metric['norm_scale_std'] = metric['scale_std'] / metric['scale_avg']
@@ -35,12 +73,13 @@ def main(args):
         # CALCULATE GLOBAL ERROR METRICS
         metric['scaled_point_errors'],metric['scaled_error_avg'],metric['scaled_error_std'] = metrics.calc_error(data_gt, scaled_data_eval,use_z=args.eval_3d,verbose=args.verbose)
         # CALCULATE SCALE FACTOR METRICS
-        scaled_map_image = util.scale_image_with_aspect_ratio(args.map_image,metric['scale_avg'])
+        if args.map_image is not None:
+            scaled_map_image = util.scale_image_with_aspect_ratio(args.map_image,metric['scale_avg'])
         metric['scaled_point_scales'],metric['scaled_scale_avg'],metric['scaled_scale_std'] = metrics.calc_scale_factors(data_gt, scaled_data_eval,use_z=args.eval_3d,verbose=args.verbose)
         metric['scaled_norm_scale_std'] = metric['scaled_scale_std'] / metric['scaled_scale_avg']
 
     # UNIT SCALING
-    metric_scaler = 0.033311475409836 #1
+    metric_scaler = 1 #0.033311475409836 #1
     s = metric_scaler
 
     # GENERATE OUTPUT PLOTS
@@ -64,7 +103,8 @@ def main(args):
                     metric['cvg_found'],metric['cvg_total'],metric['coverage'],
                     metric['error_avg']*s,metric['error_std']*s,
                     metric['scale_avg'],metric['scale_std'],metric['norm_scale_std'],
-                    metric['scaled_error_avg']*s,metric['scaled_error_std']*s]
+                    metric['scaled_error_avg']*s,metric['scaled_error_std']*s,
+                    metric['detection_score'],metric['detection_thresh']]
         metrics.log_to_csv(args.log_file, log_list,verbose=args.verbose)
 
 
@@ -72,38 +112,38 @@ if __name__ == "__main__":
     # DEFAULT ARGUMENTS 
     verbose = False
     log_results = True
-    eval_3d = False
+    eval_3d = True
     auto_scale = False
 
     # output_dir = "C:/Users/nullp/Projects/map_accuracy_eval/output/point_method"
-    default_output = "C:/Users/nullp/Projects/map_accuracy_eval/data/ua5/"
-    output_dir = "C:/Users/nullp/Projects/map_accuracy_eval/data/devens/output"
+    default_output = "C:/Users/nullp/Projects/map_accuracy_eval/data/german-open/"
+    output_dir = "C:/Users/nullp/Projects/map_accuracy_eval/data/german-open/"
     # output_dir = util.select_directory(default_output, "Select output dir")
-    log_name = "2d_output_log.csv"
+    log_name = "finals_object_metrics_log.csv"
 
-    test_name = "NewHorizon 3F (RESCALED)"
-    test_note = "3F All Points (2D Eval)"
+    test_name = "German Open Identified Objects Evaluation"
+    test_note = "Team Dynamics - 6 - Finals"
     # Structural Reference Points  -  C Targets  -  All Points
 
-    d = "C:/Users/nullp/Projects/map_accuracy_eval/data/devens" # Default dir
-    gt_file = "C:/Users/nullp/Projects/map_accuracy_eval/data/devens/gt/GPS-ground-truth.csv"
+    d = "C:/Users/nullp/Projects/map_accuracy_eval/data/german-open" # Default dir
+    gt_file = "C:/Users/nullp/Projects/map_accuracy_eval/data/german-open/gt/gt1_combined_v2.csv"
     # pts1_file = "C:/Users/nullp/Projects/map_accuracy_eval/data/example/metric_test3.csv"
     # pts1_file = csv_loader.open_csv_dialog(d)
     pts1_file = gt_file
 
-    d = "C:/Users/nullp/Projects/map_accuracy_eval/data/devens"
-    pts2_file = "C:/Users/nullp/Projects/map_accuracy_eval/data/devens/parrot-farsight-photo.csv"
+    d = "C:/Users/nullp/Projects/map_accuracy_eval/data/german-open"
+    pts2_file = "C:/Users/nullp/Projects/map_accuracy_eval/data/german-open/gt/gt1_ar_tags.csv"
     # pts2_file = pts1_file
-    # pts2_file = csv_loader.open_csv_dialog(d)
+    pts2_file = csv_loader.open_csv_dialog(d)
 
     use_headers = None    # Set to None if first line of csv has headers
-    # use_headers = ['label','x','y','z']
+    use_headers = ['label','x','y','z']
     # if eval_3d: use_headers.append('z')   
     
     d = "C:/Users/nullp/Projects/map_accuracy_eval/data/devens"
-    map_image_file = "C:/Users/nullp/Projects/map_accuracy_eval/data/devens/parrot-farsight-photo.png"
+    # map_image_file = "C:/Users/nullp/Projects/map_accuracy_eval/data/devens/parrot-farsight-photo.png"
     # map_image_file = util.open_image_dialog(d)
-    # map_image_file = None
+    map_image_file = None
     
     create_plots = True
     figsize_inches = (9,9) # (8,8) default
@@ -178,53 +218,64 @@ if __name__ == "__main__":
     args.log_file = os.path.join(args.output_dir,args.log_name)
 
     # PROCESS BATCH =========================================================================
-    data_dir = "C:/Users/nullp/Projects/map_accuracy_eval/data/devens"
-    csv_list = [file for file in os.listdir(data_dir) if file.endswith('.csv')]
-    eval_file = "C:/Users/nullp/Projects/map_accuracy_eval/data/devens/teal-farsight-video.csv"
-    print(f"Maps:\n{[eval_file]}")
-    # for map in [csv_list[0]]:
-    for map in [os.path.basename(eval_file)]:
-        args.pts2_file = join(data_dir,map)
-        map_name = map.split(".")[0]
-        args.map_image_file = join(data_dir,map_name+".png")
-        args.err_plot_name = os.path.join(output_dir,util.generate_unique_filename(f"{map_name}-point-errors"))
-        args.scale_plot_name = os.path.join(output_dir,util.generate_unique_filename(f"{map_name}-scale-factors"))
-        name_split = map_name.split("-")
-        args.test_name = f"{name_split[0].capitalize()} - {name_split[1].capitalize()} {name_split[2]}"
-        args.test_note = f""
+    # data_dir = "C:/Users/nullp/Projects/map_accuracy_eval/data/devens"
+    # csv_list = [file for file in os.listdir(data_dir) if file.endswith('.csv')]
+    # eval_file = "C:/Users/nullp/Projects/map_accuracy_eval/data/devens/teal-farsight-video.csv"
+    # print(f"Maps:\n{[eval_file]}")
+    # # for map in [csv_list[0]]:
+    # for map in [os.path.basename(eval_file)]:
+    #     args.pts2_file = join(data_dir,map)
+    #     map_name = map.split(".")[0]
+    #     args.map_image_file = join(data_dir,map_name+".png")
+    #     args.err_plot_name = os.path.join(output_dir,util.generate_unique_filename(f"{map_name}-point-errors"))
+    #     args.scale_plot_name = os.path.join(output_dir,util.generate_unique_filename(f"{map_name}-scale-factors"))
+    #     name_split = map_name.split("-")
+    #     args.test_name = f"{name_split[0].capitalize()} - {name_split[1].capitalize()} {name_split[2]}"
+    #     args.test_note = f""
 
 
 
-        args.use_headers = use_headers
-        # LOAD POINTS 
+    args.use_headers = use_headers
+    # LOAD POINTS FILE 1
+    if args.pts1_file is None:
+        args.pts1_file = csv_loader.open_csv_dialog('../data')
         if args.pts1_file is None:
-            args.pts1_file = csv_loader.open_csv_dialog('../data')
-            if args.pts1_file is None:
-                print("Ground Truth points file must be selected.")
-                exit()
-        headers1, data_gt = csv_loader.read_csv_points(args.pts1_file,args.use_headers,verbose=args.verbose)
-        args.gt_file = os.path.basename(args.pts1_file)
-        args.data_gt = csv_loader.fix_data_types(data_gt,set_str=['label'],set_float=['x','y','z'])
-
+            print("Ground Truth points file must be selected.")
+            exit()
+    print("\nLoading Point file 1...")
+    headers1, data_gt = csv_loader.read_csv_points(args.pts1_file,args.use_headers,verbose=args.verbose)
+    args.gt_file = os.path.basename(args.pts1_file)
+    args.data_gt = csv_loader.fix_data_types(data_gt,set_str=['label'],set_float=['x','y','z'])
+    # LOAD POINTS FILE 2
+    if args.pts2_file is None:
+        args.pts2_file = csv_loader.open_csv_dialog('../data')
         if args.pts2_file is None:
-            args.pts2_file = csv_loader.open_csv_dialog('../data')
-            if args.pts2_file is None:
-                print("Evaluation points file must be selected.")
-                exit()
-        headers2, data_eval = csv_loader.read_csv_points(args.pts2_file,args.use_headers,verbose=args.verbose)
-        args.eval_file = os.path.basename(args.pts2_file)
-        args.data_eval = csv_loader.fix_data_types(data_eval,set_str=['label'],set_float=['x','y','z'])
-        
-        # LOAD MAP IMAGE
-        args.map_image = None
-        if args.map_image_file == "choose":
-            args.map_image_file = util.open_image_dialog()
-        if args.map_image_file:
-            args.map_image = cv.imread(args.map_image_file)
-            args.map_image = cv.cvtColor(args.map_image,cv.COLOR_BGR2RGB)
+            print("Evaluation points file must be selected.")
+            exit()
+    print("\nLoading Point file 2...")
+    # headers2, data_eval = csv_loader.read_csv_points(args.pts2_file,args.use_headers,verbose=args.verbose)
+    # args.eval_file = os.path.basename(args.pts2_file)
+    # args.data_eval = csv_loader.fix_data_types(data_eval,set_str=['label'],set_float=['x','y','z'])
+    # MODIFIED FOR ROBOCUP GERMAN OPEN
+    headers2, data_eval = csv_loader.read_csv_points(args.pts2_file,headers = None,skip_rows=8,verbose=True)
+    args.eval_file = os.path.basename(args.pts2_file)
+    data_eval = csv_loader.append_concatenated_header(data_eval,'label',['type','name'],True)
+    data_eval = csv_loader.extract_fields(data_eval,['label','x','y','z'])
+    args.data_eval = csv_loader.fix_data_types(data_eval,set_str=['label'],set_float=['x','y','z'])
+    detections_out = os.path.dirname(pts2_file)
+    csv_loader.write_csv(join(detections_out,"fixed.csv"),['label','x','y','z'],data_eval)
+    
+    # LOAD MAP IMAGE
+    args.map_image = None
+    if args.map_image_file == "choose":
+        args.map_image_file = util.open_image_dialog()
+    if args.map_image_file:
+        args.map_image = cv.imread(args.map_image_file)
+        args.map_image = cv.cvtColor(args.map_image,cv.COLOR_BGR2RGB)
 
-        
-        
-        main(args)
+    # Pause before calculation
+    input("Continue?: Ctrl+C to exit")
+    
+    main(args)
     
         
