@@ -1,0 +1,15 @@
+{
+    "root_directory":       "C:/Users/nullp/Projects/map_accuracy_eval/data/german-open",
+    "ground_truth_file":    "groundtruth/gt1_combined_v2.csv",
+    "eval_file":            null,
+    "event_name":           "Prelim 1",
+    "note":                 "xx",
+
+    "eval_3d":              true,
+    "auto_scale":           false,
+    "scoring_threshold":    1.50,
+    "save_outliers":        true,
+    "log_results":          true,
+    "log_file":             "refpt_test.csv",
+    "verbose":              false
+}

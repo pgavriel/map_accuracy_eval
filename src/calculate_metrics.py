@@ -21,7 +21,7 @@ def log_to_csv(log_file, data_values,header=None,verbose=False,unit="(m)"):
              f'Error Average {unit}', f'Error Std Dev {unit}',
              'Scale Average', 'Scale Std Dev', 'Normalized Scale Std Dev',
              'Scaled Error Average', 'Scaled Error Std Dev',
-             'Detection Score','Detection Thresh']  # Adjust the header columns as needed
+             'Detection Score','Detection Thresh','Mapping Score']  # Adjust the header columns as needed
     
     # Check if the directory exists, create it if it does not
     log_dir = os.path.dirname(log_file)

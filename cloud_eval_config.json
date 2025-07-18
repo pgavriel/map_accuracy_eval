@@ -1,0 +1,12 @@
+{
+    "root_directory":       "C:/Users/nullp/Projects/map_accuracy_eval/data/robocup2025",
+    "ground_truth_file":    "gt/gt_p1-1_subsample-5mm.ply",
+    "eval_file":            null,
+    "event_name":           "From David - Dynamics",
+    "note":                 "iPhone Scan",
+    "dist_threshold":       0.05,
+    "save_outliers":        true,
+    "log_results":          true,
+    "log_file":             "skyebrowse_log.csv",
+    "verbose":              true
+}
