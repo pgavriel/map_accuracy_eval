@@ -137,10 +137,13 @@ def main(args):
                 metrics.generate_scalefactor_plot(data_eval,metric,args.exclude_std_devs,args.map_image,args.scale_plot_name,args.show_plots,args.figsize,False)
     
     # CALCULATE MAPPING SCORE (ROBOCUP)
-    metric["mapping_score"] = metric['detection_score'] / (1 + metric['error_avg']*s)
-    print(f"Detection Points (P): {metric['detection_score']}")
+    metric["raw_mapping_score"] = metric['detection_score'] / (1 + metric['error_avg']*s)
+    print(f"Detection Points (P): {metric['detection_score']} / {args.total_points} = {metric['detection_score']/args.total_points:.2f}")
     print(f"Avg Error (E): {metric['error_avg']*s:.2f}")
-    print(f"IDENTIFICATION SCORE (P/(1+E)): {metric['mapping_score']:.2f}")
+    print(f"Raw ID Score (P/(1+E)): {metric['raw_mapping_score']:.2f}")
+    metric["mapping_score"] =  (metric["raw_mapping_score"] * 100) / args.total_points
+    print(f"Adjusted ID Score: {metric['mapping_score']:.2f}")
+
 
     # LOG RESULTS
     if log_results:
@@ -153,7 +156,7 @@ def main(args):
                     metric['error_avg']*s,metric['error_std']*s,
                     metric['scale_avg'],metric['scale_std'],metric['norm_scale_std'],
                     metric['scaled_error_avg']*s,metric['scaled_error_std']*s,
-                    metric['detection_score'],metric['detection_thresh'],metric["mapping_score"]]
+                    metric['detection_score'],metric['detection_thresh'],metric["raw_mapping_score"],metric["mapping_score"]]
         metrics.log_to_csv(args.log_file, log_list,verbose=args.verbose)
 
 
@@ -318,17 +321,20 @@ if __name__ == "__main__":
             print("Evaluation points file must be selected.")
             exit()
     print("\nLoading Point file 2...")
-    # headers2, data_eval = csv_loader.read_csv_points(args.pts2_file,args.use_headers,verbose=args.verbose)
-    # args.eval_file = os.path.basename(args.pts2_file)
-    # args.data_eval = csv_loader.fix_data_types(data_eval,set_str=['label'],set_float=['x','y','z'])
-    # MODIFIED FOR ROBOCUP GERMAN OPEN (Loads data correctly from specified Robocup csv format)
-    headers2, data_eval = csv_loader.read_csv_points(args.pts2_file,headers = None,skip_rows=8,verbose=True)
-    args.eval_file = os.path.basename(args.pts2_file)
-    data_eval = csv_loader.append_concatenated_header(data_eval,'label',['type','name'],True)
-    data_eval = csv_loader.extract_fields(data_eval,['label','x','y','z'])
-    args.data_eval = csv_loader.fix_data_types(data_eval,set_str=['label'],set_float=['x','y','z'])
-    detections_out = os.path.dirname(pts2_file)
-    csv_loader.write_csv(join(detections_out,"FIXED-"+args.eval_file),['label','x','y','z'],data_eval)
+    read_robocup_format = True
+    if not read_robocup_format:
+        headers2, data_eval = csv_loader.read_csv_points(args.pts2_file,args.use_headers,verbose=args.verbose)
+        args.eval_file = os.path.basename(args.pts2_file)
+        args.data_eval = csv_loader.fix_data_types(data_eval,set_str=['label'],set_float=['x','y','z'])
+    else:
+        # MODIFIED FOR ROBOCUP GERMAN OPEN (Loads data correctly from specified Robocup csv format)
+        headers2, data_eval = csv_loader.read_csv_points(args.pts2_file,headers = None,skip_rows=8,verbose=True)
+        args.eval_file = os.path.basename(args.pts2_file)
+        data_eval = csv_loader.append_concatenated_header(data_eval,'label',['type','name'],True)
+        data_eval = csv_loader.extract_fields(data_eval,['label','x','y','z'])
+        args.data_eval = csv_loader.fix_data_types(data_eval,set_str=['label'],set_float=['x','y','z'])
+        detections_out = os.path.dirname(pts2_file)
+        csv_loader.write_csv(join(detections_out,"FIXED-"+args.eval_file),['label','x','y','z'],data_eval)
     
     # LOAD MAP IMAGE
     args.map_image = None
@@ -339,6 +345,7 @@ if __name__ == "__main__":
         args.map_image = cv.cvtColor(args.map_image,cv.COLOR_BGR2RGB)
 
     args.scoring_threshold = config["scoring_threshold"]
+    args.total_points = config["robocup_total_points"]
     # Pause before calculation
     input("Continue?: Ctrl+C to exit")
     

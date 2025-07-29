@@ -143,7 +143,10 @@ def compare_cloud_metrics(pcd_gt, pcd_eval,gt_name="Ground Truth Cloud",eval_nam
         diff_str = None
         s = ["","+"]
         if m1 != "Has Normals" and m1 != "Has Colors":
-            diff = ((v2/v1)-1) * 100
+            try:
+                diff = ((v2/v1)-1) * 100
+            except:
+                diff = 0
             diff_str = f"{s[0] if diff < 0 else s[1]}{diff:.1f}%"
         else:
             if v1 == v2:
@@ -277,7 +280,7 @@ if __name__ == "__main__":
         headers = ["Timestamp","Event","Note","GT File","Eval File",
                    "Has Color","Has Normals","Total Points",
                    "BB Extent","BB Volume","BB Density","CH Volume","CH Density",
-                    "Dist GT->EV","Dist EV->GT","Dist Avg (Chamfer Distance)","Completeness","CompDist Threshold","Map Score"]
+                    "Dist EV->GT","Dist GT->EV","Dist Avg (Chamfer Distance)","Completeness","CompDist Threshold","Map Score"]
         
         bb_extent = [eval_info["Bound Extent X"],eval_info["Bound Extent Y"],eval_info["Bound Extent Z"]]
         log_data = [util.timestamp(),event_name,note,basename(ground_truth_path),basename(eval_map_path),

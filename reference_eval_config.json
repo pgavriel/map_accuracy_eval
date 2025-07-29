@@ -1,15 +1,16 @@
 {
-    "root_directory":       "C:/Users/nullp/Projects/map_accuracy_eval/data/german-open",
-    "ground_truth_file":    "groundtruth/gt1_combined_v2.csv",
+    "root_directory":       "C:/Users/nullp/Projects/map_accuracy_eval/data/robocup2025",
+    "ground_truth_file":    "gt/finals/labels_all_aligned.csv",
     "eval_file":            null,
-    "event_name":           "Prelim 1",
-    "note":                 "xx",
+    "event_name":           "Finals",
+    "note":                 "Dynamics - Map 4",
 
     "eval_3d":              true,
     "auto_scale":           false,
-    "scoring_threshold":    1.50,
+    "robocup_total_points": 80,
+    "scoring_threshold":    1.0,
     "save_outliers":        true,
     "log_results":          true,
-    "log_file":             "refpt_test.csv",
+    "log_file":             "finals_id.csv",
     "verbose":              false
 }
