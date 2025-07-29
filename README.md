@@ -10,7 +10,8 @@ Rather than looking at absolute distance between point A in the ground truth vs 
   
 ### Direct Cloud to Cloud Evaluation (3D)  
 ![Cloud to Cloud Example](./img/cloud_example.png)   
-Cloud to cloud evaluation is suitable for 3D evaluations, and generally requires less setup work than reference point evaluations, but it also comes with limitations. This method requires a best-fit global alignment of the evaluation map to the ground truth, as the metrics calculated rely on absolute distance measurements. Because of this, a map which has two accurate areas connected by some kind of distorted area will be scored harshly, and there is no programatic way to determine when this is the case. This method calculates the average distances between clouds, as wel as a coverage metric which determines the percentage of ground truth points for which the evaluation map also has a point within a specified threshold proximity.  
+Cloud to cloud evaluation is suitable for 3D evaluations, and generally requires less setup work than reference point evaluations, but it also comes with limitations. This method requires a best-fit global alignment of the evaluation map to the ground truth, as the metrics calculated rely on absolute distance measurements. Because of this, a map which has two accurate areas connected by some kind of distorted area will be scored harshly, and there is no programmatic way to determine when this is the case. This method calculates the average distances between clouds, as well as a coverage metric which determines the percentage of ground truth points for which the evaluation map also has a point within a specified threshold proximity.  
+With this method, an evaluation map could get high coverage by simply filling a volume with points, however the average Eval to GT distance would be very high. Conversely, an evaluation map could get very low average distance by having sparse points with high certainty, but the coverage would suffer. Therefore, these two metrics should be considered jointly.  
 
 ### Split Fiducial Evaluation (2D)  
 ![Fiducial Example](./img/fiducial_example.png)  
@@ -22,6 +23,7 @@ This method requires preparing the physical mapping environment with easily iden
 * **map_labeller.py** - (2D) Script is used to label 2D evaluation points within a map image. Points can easily be imported, edited, and exported in a format that can be used by the evaluation tool. *NOTE: For 3D evaluations, a tool like CloudCompare can be used to export labelled 3D point lists.*   
 * **fiducial_evaluation.py** - (2D) This tool is used for performing fiducial evaluations (currently either cylinder or splitcross type). Fiducials are artifacts placed within the mapping area to assess local errors within the map.    
 * **align_pts_to_map.py** - (2D) Tool for aligning reference points to a corresponding map image and saving the new transformed points (for visualizing)  
+* **cloud_slicer.py** - Script which allows the user to easily generate specific cross-sections of 3D clouds as labelled png images. Useful for judging 3D maps as 2D maps, or making 3D maps easier to present/visualize for end users.   
   
 **METRICS**  
 * Coverage - The percentage of labelled ground truth points contained in the list of evaluation points.    
