@@ -29,6 +29,7 @@ def load_config(config_path=None,verbose=True):
         "ground_truth_file": (str, type(None)),  # Allows None (null)
         "eval_file": (str, type(None)),  # Allows None (null)
         "event_name": str,
+        "team_name": str,
         "note": str,
         "dist_threshold": float,
         "log_file": str,
@@ -179,7 +180,7 @@ def compute_cloud_to_cloud_distance(source_pcd, target_pcd):
     return np.array(distances)
 
 # def compute_completeness(ground_truth_pcd, eval_pcd, threshold):
-def compute_completeness(ground_truth_pcd, distances, threshold):
+def compute_completeness(ground_truth_pcd, distances, threshold, get_inliers=False):
     """
     Computes the completeness of coverage for a evaluation point cloud
     to a ground truth cloud within a specified threshold.
@@ -190,17 +191,28 @@ def compute_completeness(ground_truth_pcd, distances, threshold):
         distances (array): Array of min distances from each GT point to the eval cloud
         threshold (float): All minimum distances >= threshold = outlier
     """
-    # Identify points that fall outside the threshold
+    # Identify points that fall outside the threshold (GT POINTS NOT COVERED)
     outside_indices = np.where(distances >= threshold)[0]
     
     # Create a new point cloud with only those points
     incomplete_pcd = o3d.geometry.PointCloud()
     incomplete_pcd.points = o3d.utility.Vector3dVector(np.asarray(ground_truth_pcd.points)[outside_indices])
+    incomplete_pcd.paint_uniform_color([1, 0, 0])
+
+    covered_pcd = None
+    if get_inliers:
+        # Identify points that fall within the threshold (GT POINTS COVERED)
+        inside_indices = np.where(distances <= threshold)[0]
+        
+        # Create a new point cloud with only those points
+        covered_pcd = o3d.geometry.PointCloud()
+        covered_pcd.points = o3d.utility.Vector3dVector(np.asarray(ground_truth_pcd.points)[inside_indices])
+        covered_pcd.paint_uniform_color([0, 1, 0])
 
     # Compute completeness
     completeness = ((len(distances) - len(outside_indices)) / len(distances)) * 100.0
 
-    return completeness, incomplete_pcd
+    return completeness, incomplete_pcd, covered_pcd
 
 
 if __name__ == "__main__":
@@ -220,8 +232,11 @@ if __name__ == "__main__":
         eval_map_path = join(root_dir, config["eval_file"])
     eval_map_file = basename(eval_map_path).split(".")[0]
     output_incomplete_path = join(dirname(eval_map_path),eval_map_file+"_missing_points.ply")
+    output_covered_path = join(dirname(eval_map_path),eval_map_file+"_covered_points.ply")
+    output_erroneous_path = join(dirname(eval_map_path),eval_map_file+"_erroneous_points.ply")
 
     event_name = config["event_name"]
+    team_name = config["team_name"]
     note = config["note"]
     distance_threshold = config["dist_threshold"] # Adjust this threshold based on your use case
 
@@ -263,27 +278,40 @@ if __name__ == "__main__":
     print(f"Distance Average (Chamfer distance): {d_avg:.4f}\n")
 
     # Completeness: Percentage of ground truth points within distance threshold
-    completeness, incomplete_pcd = compute_completeness(ground_truth_pcd,distances2,distance_threshold)
+    completeness, incomplete_pcd, covered_pcd = compute_completeness(ground_truth_pcd,distances2,distance_threshold,get_inliers=True)
     print(f"Completeness: {completeness:.2f}% of ground truth points within {distance_threshold} units.")
+    # Get the outliers in the eval cloud
+    inv_completeness, error_pcd, _ = compute_completeness(eval_map_pcd,distances1,distance_threshold)
     
+
     # Compute Mapping Score
+    print("\n\n[ FOR ROBOCUP/COMPETITION ]")
     map_score = (completeness) / (1 + d1_mean)
-    print(f"\n3D MAP SCORE (C / (1+E)): {map_score:.2f}\n")
+    print(f"Error (E): {d1_mean*100:.2f}cm")
+    print(f"Coverage (C): {completeness:.2f}%")
+    print(f"3D MAP SCORE (C / (1+E)): {map_score:.2f}\n")
 
     # SAVE OUTPUTS ===========================================================
     if save_outliers:
-        # Save and visualize missing points
+        # Save and visualize missing points (Uncovered ground truth points)
         o3d.io.write_point_cloud(output_incomplete_path, incomplete_pcd)
         print(f"Saved incomplete/missing points to {output_incomplete_path}")
+        # Save and visualize covered points (Ground truth points which were covered)
+        o3d.io.write_point_cloud(output_covered_path, covered_pcd)
+        print(f"Saved covered/scored points to {output_covered_path}")
+        # Save and visualize erroneous points (Points far away from the ground truth)
+        error_pcd.paint_uniform_color([0, 0, 1])   # Make Blue
+        o3d.io.write_point_cloud(output_erroneous_path, error_pcd)
+        print(f"Saved erroneous points to {output_erroneous_path}")
 
     if log_results:
-        headers = ["Timestamp","Event","Note","GT File","Eval File",
+        headers = ["Timestamp","Event","Team","Note","GT File","Eval File",
                    "Has Color","Has Normals","Total Points",
                    "BB Extent","BB Volume","BB Density","CH Volume","CH Density",
                     "Dist EV->GT","Dist GT->EV","Dist Avg (Chamfer Distance)","Completeness","CompDist Threshold","Map Score"]
         
         bb_extent = [eval_info["Bound Extent X"],eval_info["Bound Extent Y"],eval_info["Bound Extent Z"]]
-        log_data = [util.timestamp(),event_name,note,basename(ground_truth_path),basename(eval_map_path),
+        log_data = [util.timestamp(),event_name,team_name,note,basename(ground_truth_path),basename(eval_map_path),
                     eval_info["Has Colors"],eval_info["Has Normals"],eval_info["Total Points"],
                     bb_extent,eval_info["Bounding Box Volume"],eval_info["Density"],eval_info["convex_hull_volume"],eval_info["convex_hull_density"],
                     d1_mean,d2_mean,d_avg,completeness,distance_threshold,map_score]

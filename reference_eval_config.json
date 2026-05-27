@@ -1,16 +1,37 @@
 {
-    "root_directory":       "C:/Users/nullp/Projects/map_accuracy_eval/data/robocup2025",
-    "ground_truth_file":    "gt/finals/labels_all_aligned.csv",
+    "root_directory":       "C:/Users/nullp/Projects/map_accuracy_eval/data/german-open26",
+    "ground_truth_file":    "gt/1/labels_all.csv",
     "eval_file":            null,
-    "event_name":           "Finals",
-    "note":                 "Dynamics - Map 4",
-
+    "robocup_eval_format":  true,
+    "inject_headers":       ["label","x","y","z"],
+    "event_name":           "TEST",
+    "team_name":            "Team X",
+    "note":                 "Map 2",
     "eval_3d":              true,
-    "auto_scale":           false,
-    "robocup_total_points": 80,
+    "pause_before_running": true,
+
+    "id_points_by_type":{
+        "ar_tag": 1,
+        "hazmat": 2,
+        "real_object": 10,
+        "heat_signature": 15
+    },
     "scoring_threshold":    1.0,
-    "save_outliers":        true,
+
     "log_results":          true,
-    "log_file":             "finals_id.csv",
-    "verbose":              false
+    "log_file":             "test.csv",
+    "verbose":              false,
+
+    "plot_generation": {
+        "_INFO": "FOR 2D EVAL ONLY",
+        "create_plots": true,
+        "save_plots": true,
+        "show_plots": true,
+        "auto_scale": false,
+        "include_background_image": false,
+        "background_image": null,
+        "fig_size": [9,9],
+        "sf_exclude_std_dev": 2.0,
+        "units": "m"
+    }
 }

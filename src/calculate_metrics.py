@@ -13,15 +13,15 @@ import point_manip as pm
 import utilities as util
 
 def log_to_csv(log_file, data_values,header=None,verbose=False,unit="(m)"):
-    if verbose: print(f"Logging Metrics to: {log_file}")
+    if verbose: print(f"\nLogging Metrics to: {log_file}")
     if header is None:
-        header = ['Timestamp', 'Map Name', 'Note',
+        header = ['Timestamp', 'Event', 'Team', 'Note',
              'Ground Truth File','Evaluation File',
              'Coverage Found','Coverage Total','Coverage %', 
              f'Error Average {unit}', f'Error Std Dev {unit}',
              'Scale Average', 'Scale Std Dev', 'Normalized Scale Std Dev',
              'Scaled Error Average', 'Scaled Error Std Dev',
-             'Detection Score','Detection Thresh','Mapping Score (Raw)', 'Mapping Score (Adjusted)']  # Adjust the header columns as needed
+             'Detection Score','Available Points','Detection Thresh','Mapping Score (Raw)', 'Mapping Score (Adjusted)']  # Adjust the header columns as needed
     
     # Check if the directory exists, create it if it does not
     log_dir = os.path.dirname(log_file)
@@ -42,10 +42,10 @@ def log_to_csv(log_file, data_values,header=None,verbose=False,unit="(m)"):
         
         # Append the data values
         writer.writerow(data_values)
-        if not verbose:
-            print("LOG DATA ADDED...")
-        else:
-            print(f"LOG DATA ADDED:\n{data_values}")
+        # if not verbose:
+        print("LOG DATA ADDED...")
+        # else:
+        #     print(f"LOG DATA ADDED:\n{data_values}")
 
 def initialize_metrics(metric_list=None):
     if metric_list is None:
@@ -224,8 +224,8 @@ def generate_pointerror_contour_plot(data,point_errors,metrics,image=None,save_f
     # Min and Max error values for color scaling
     vmin = min(sparse_error)
     vmax = max(sparse_error)
-    vmin = 0 
-    vmax = 3
+    vmin = 5 
+    vmax = 25
 
     # Create a regular grid for interpolation
     grid_resolution = 500
