@@ -107,6 +107,12 @@ def rasterize_pointcloud(pcd, axis='z', width=512, height=512,
         cv2.putText(img, text, (10, height - 20),
                     fontFace=cv2.FONT_HERSHEY_SIMPLEX,
                     fontScale=0.6,
+                    color=(255, 255, 255),
+                    thickness=5,
+                    lineType=cv2.LINE_AA)
+        cv2.putText(img, text, (10, height - 20),
+                    fontFace=cv2.FONT_HERSHEY_SIMPLEX,
+                    fontScale=0.6,
                     color=(0, 0, 255),
                     thickness=1,
                     lineType=cv2.LINE_AA)
@@ -129,72 +135,87 @@ def find_files_by_pattern(root_dir,search_pattern="*align.ply"):
     return glob(pattern, recursive=True)
 
 def get_info_text(path,position,thickness,label):
-    parts = path.split('-')
+    parts = path.split('.')[0].split('-')
     s = ""
-    if parts[0] == "p2":
-        s += "[Preliminaries] "
-    elif parts[0] == "s":
-        s += "[Semifinals] "
+    if parts[0] in ["p1","p2","p3","p4"]:
+        s += f"[Preliminaries {parts[0].upper()}] "
+    elif parts[0] in ["s1","s2"]:
+        s += f"[Semifinals {parts[0].upper()}] "
     elif parts[0] == "f":
         s += "[Finals] "
     elif parts[0] == "gt":
         s += "[Ground Truth] "
-    elif parts[0] == "lab":
-        s += "[SkyeBrowse] "
+    # elif parts[0] == "test":
+    #     s += "[TESTING] "
+    else:
+        raise Exception("Didn't match any expected file name format.")
 
-    s += parts[1]    
+    # s += parts[1].upper()    
+    s += " - ".join(parts[1:]).upper()
     # s += f" - Map {parts[2][-1]} "
-    s += f"[Sliced at {position:.1f}m +/- {thickness/2:.1f}][{label}]"
+    s += f" [Sliced at {position:.1f}m +/- {thickness/2:.1f}][{label}]"
     return s
 
 # Example usage:
 if __name__ == "__main__":
-    # Load batch of cloud files by regex pattern:
-    # input_dir = "./data/robocup2025/"
-    # search_pattern = "lab*aligned-icp.ply"
-    # cloud_paths = sorted(find_files_by_pattern(input_dir,search_pattern))
-    # print("Found the following point cloud files:")
-    # for path in cloud_paths:
-    #     print(" > ", os.path.basename(path))
-    # print(f"Total Files: {len(cloud_paths)}")
-    # input("\nPress Enter to begin processing... (Ctrl+C to Cancel)")
+    LOAD_BATCH = False
 
-    # Load single cloud to slice by file selection:
-    cloud_paths = [select_point_cloud_files(".")]
+    if LOAD_BATCH:
+        # Load batch of cloud files by regex pattern:
+        input_dir = "./data/robocup-germanopen26/submissions"
+        search_pattern = "*.ply"
+        cloud_paths = sorted(find_files_by_pattern(input_dir,search_pattern))
+        init_len = len(cloud_paths)
+        # Filter some file paths out
+        filters = ["covered_points", "missing_points", "erroneous_points"]
+        cloud_paths = [p for p in cloud_paths if not any(f in p for f in filters)]
+        print(f"Filtered out {init_len-len(cloud_paths)} file paths containing {filters}...")
+        # List results and await confirmation to continue
+        print("Found the following point cloud files:")
+        for path in cloud_paths:
+            print(" > ", os.path.basename(path))
+        print(f"Total Files: {len(cloud_paths)}")
+        input("\nPress Enter to begin processing... (Ctrl+C to Cancel)")
+    else:
+        # Load single cloud to slice by file selection:
+        cloud_paths = [select_point_cloud_files("./data/robocup-germanopen26")]
 
-    output_dir = "./data/slice"
+    output_dir = "./data/robocup-germanopen26/map-slices"
     os.makedirs(output_dir, exist_ok=True)
-
+    skipped_list = []
 
     # Process all gathered files
     for fpath in cloud_paths:
         fname = os.path.basename(fpath)
         print(f"Reading Cloud... ( {fpath} )")
         pcd = o3d.io.read_point_cloud(fpath)
+        
         # Get Low Slice
         position = 1.0
-        thickness = 0.5
+        thickness = 0.2
         sliced = slice_pointcloud(pcd, position=position, thickness=thickness, axis='z')
         out_path = os.path.join(output_dir, fname.replace(".ply", "-lowslice.png").replace(".pcd", "-lowslice.png"))
         
         try:
             info_text = get_info_text(fname,position,thickness,"LOW")
-        except:
-            print(f"[!] FAILED FOR {fname}")
+        except Exception as e: 
+            print(f"\n [!] FAILED FOR {fname} - {e}\n")
+            skipped_list.append(" - ".join([fname,str(e)]))
             continue
 
         rasterize_pointcloud(sliced,
                             axis='z',
-                            width=1000,
-                            height=800,
-                            background_color=(1.0, 1.0, 1.0),
+                            width=800,
+                            height=1000,
+                            background_color=( 1.0, 0.95, 0.95 ),
                             output_path=out_path,
                             text=info_text,
-                            xy_range=None) # optionally specify XY range
+                            xy_range=[(-0.25,6.0),(-4.5,3.5)]) # optionally specify XY range
+                            # xy_range=None) 
                             # xy_range=[(-1.0,12.0),(-4.0,3.5)])
         
         # Get High Slice
-        position = 1.7
+        position = 2.1
         thickness = 0.2
         sliced = slice_pointcloud(pcd, position=position, thickness=thickness, axis='z')
         out_path = os.path.join(output_dir, fname.replace(".ply", "-highslice.png").replace(".pcd", "-highslice.png"))
@@ -207,12 +228,18 @@ if __name__ == "__main__":
 
         rasterize_pointcloud(sliced,
                             axis='z',
-                            width=1000,
-                            height=800,
-                            background_color=(1.0, 1.0, 1.0),
+                            width=800,
+                            height=1000,
+                            background_color=(0.95, 1.0, 0.95),
                             output_path=out_path,
                             text=info_text,
-                            xy_range=None) # optionally specify XY range
-                            # xy_range=[(-1.0,12.0),(-4.0,3.5)]) # finals crop
+                            xy_range=[(-0.25,6.0),(-4.5,3.5)]) # optionally specify XY range
+                            # xy_range=None)
+
+    # Print any skipped files and reason why
+    if len(skipped_list) > 0:
+        print(f"\nSkipped {len(skipped_list)} files: ")  
+        for f in skipped_list: print(f" > {f}")  
+    print("Done.")
  
  
